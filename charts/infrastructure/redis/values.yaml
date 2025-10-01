@@ -2,6 +2,13 @@
 redis:
   architecture: standalone
 
+  # Use Bitnami Legacy registry (after Aug 2025 migration)
+  # Specific version tags moved to bitnamilegacy registry
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/redis
+    tag: "7.4.0-debian-12-r4"
+
   auth:
     enabled: true
     # Password will be auto-generated if not set
@@ -11,9 +18,7 @@ redis:
 
   master:
     persistence:
-      enabled: true
-      size: 8Gi
-      storageClass: "standard"
+      enabled: false
 
     resources:
       requests:
@@ -23,10 +28,17 @@ redis:
         memory: "256Mi"
         cpu: "250m"
 
+  # Completely disable metrics exporter
   metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: false
+    enabled: false
+
+  # Disable sentinel
+  sentinel:
+    enabled: false
+
+  # Disable replicas
+  replica:
+    replicaCount: 0
 
 # Generate secrets for different environments
 environments:

@@ -1,10 +1,11 @@
 # PostgreSQL configuration with automatic database and user creation
 postgresql:
-  # Override image to use latest stable version
+  # Use Bitnami Legacy registry (after Aug 2025 migration)
+  # Specific version tags moved to bitnamilegacy registry
   image:
     registry: docker.io
-    repository: bitnami/postgresql
-    tag: 15.4.0-debian-11-r45
+    repository: bitnamilegacy/postgresql
+    tag: "16.4.0-debian-12-r13"
 
   auth:
     # Password will be auto-generated if not set
@@ -15,9 +16,7 @@ postgresql:
 
   primary:
     persistence:
-      enabled: true
-      size: 10Gi
-      storageClass: "standard"
+      enabled: false
 
     resources:
       requests:
@@ -27,21 +26,17 @@ postgresql:
         memory: "512Mi"
         cpu: "500m"
 
-    # Init scripts mount from ConfigMap
-    initdb:
-      scriptsConfigMap: "{{ .Release.Name }}-postgresql-init"
-
+  # Disable volume permissions init container
   volumePermissions:
-    enabled: true
-    image:
-      registry: docker.io
-      repository: bitnami/os-shell
-      tag: 11-debian-11-r96
+    enabled: false
 
+  # Disable metrics exporter
   metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: false
+    enabled: false
+
+  # Disable shmVolume (requires volume)
+  shmVolume:
+    enabled: false
 
 # List of additional databases to create
 # Passwords will be auto-generated if not provided
@@ -50,5 +45,5 @@ databases:
     user: core_user
     # Password will be generated automatically
   - name: core_pipeline_prod
-    user: core_user_prod
+    user: core_user
     # Password will be generated automatically
