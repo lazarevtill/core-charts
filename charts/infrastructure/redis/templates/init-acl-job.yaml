@@ -42,11 +42,12 @@ spec:
           # Get password from secret
           REDIS_{{ .name | upper }}_PASSWORD=$(cat /secrets/redis-{{ .name }}/REDIS_PASSWORD)
 
-          # Create Redis ACL user
-          REDISCLI_AUTH=$REDIS_ADMIN_PASSWORD redis-cli -h {{ $.Release.Name }}-redis-master.{{ $.Release.Namespace }}.svc.cluster.local <<-EOCMD
-            ACL SETUSER redis_{{ .name }}_user on >${REDIS_{{ .name | upper }}_PASSWORD} ~* +@all
-            ACL SAVE
-EOCMD
+          # Create Redis ACL user using direct command
+          REDISCLI_AUTH=$REDIS_ADMIN_PASSWORD redis-cli -h {{ $.Release.Name }}-redis-master.{{ $.Release.Namespace }}.svc.cluster.local \
+            ACL SETUSER redis_{{ .name }}_user on ">$REDIS_{{ .name | upper }}_PASSWORD" ~* +@all
+
+          # Save ACL configuration
+          REDISCLI_AUTH=$REDIS_ADMIN_PASSWORD redis-cli -h {{ $.Release.Name }}-redis-master.{{ $.Release.Namespace }}.svc.cluster.local ACL SAVE
 
           echo "✓ Created ACL user: redis_{{ .name }}_user"
           {{- end }}
