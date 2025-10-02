@@ -36,6 +36,5 @@ Temporary Items
 *.tmp
 *.temp
 
-# Helm
-*.tgz
-charts/*/charts/
+# Note: Helm chart dependencies (.tgz and charts/) are NOT ignored
+# They must be committed for ArgoCD to work without external repo access
