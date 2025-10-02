@@ -5,10 +5,57 @@ image:
 imagePullSecrets:
   - name: ghcr-secret
 
-# Inject all credentials from secret
-envFrom:
-  - secretRef:
-      name: all-credentials
+# Reference infrastructure secrets for database and Redis credentials
+externalSecrets:
+  # PostgreSQL credentials from infrastructure namespace
+  - envName: DB_HOST
+    secretName: postgres-core-pipeline-dev-secret
+    secretKey: DB_HOST
+  - envName: DB_PORT
+    secretName: postgres-core-pipeline-dev-secret
+    secretKey: DB_PORT
+  - envName: DB_USERNAME
+    secretName: postgres-core-pipeline-dev-secret
+    secretKey: DB_USERNAME
+  - envName: DB_PASSWORD
+    secretName: postgres-core-pipeline-dev-secret
+    secretKey: DB_PASSWORD
+  - envName: DB_DATABASE
+    secretName: postgres-core-pipeline-dev-secret
+    secretKey: DB_DATABASE
+  # Legacy PostgreSQL vars for backward compatibility
+  - envName: POSTGRES_HOST
+    secretName: postgres-core-pipeline-dev-secret
+    secretKey: DB_HOST
+  - envName: POSTGRES_PORT
+    secretName: postgres-core-pipeline-dev-secret
+    secretKey: DB_PORT
+  - envName: POSTGRES_USER
+    secretName: postgres-core-pipeline-dev-secret
+    secretKey: DB_USERNAME
+  - envName: POSTGRES_PASSWORD
+    secretName: postgres-core-pipeline-dev-secret
+    secretKey: DB_PASSWORD
+  - envName: POSTGRES_DB
+    secretName: postgres-core-pipeline-dev-secret
+    secretKey: DB_DATABASE
+  # Redis credentials from infrastructure namespace
+  - envName: REDIS_HOST
+    secretName: redis-dev-secret
+    secretKey: REDIS_HOST
+  - envName: REDIS_PORT
+    secretName: redis-dev-secret
+    secretKey: REDIS_PORT
+  - envName: REDIS_PASSWORD
+    secretName: redis-dev-secret
+    secretKey: REDIS_PASSWORD
+  # Bull Queue Redis URL
+  - envName: BULL_REDIS_URL
+    secretName: redis-dev-secret
+    secretKey: REDIS_URL
+  - envName: REDIS_URL
+    secretName: redis-dev-secret
+    secretKey: REDIS_URL
 
 ingress:
   enabled: true
@@ -42,29 +89,17 @@ env:
   LOG_LEVEL: debug
   LOG_PRETTY: "true"
 
-  # Database - Using TypeORM expected env vars
-  DB_HOST: postgresql.database.svc.cluster.local
-  DB_PORT: "5432"
-  DB_USERNAME: core_user
-  DB_DATABASE: core_pipeline_dev
+  # Database logging
   DB_LOGGING: "true"
-
-  # Redis
-  REDIS_HOST: redis-master.redis.svc.cluster.local
-  REDIS_PORT: "6379"
 
   # Kafka
   KAFKA_CLIENT_ID: core-pipeline-dev
   KAFKA_BROKER: kafka.kafka.svc.cluster.local:9092
   KAFKA_CONSUMER_GROUP: core-pipeline-dev-group
 
-  # Legacy vars for backward compatibility
+  # Legacy Kafka vars for backward compatibility
   KAFKA_BROKERS: kafka.kafka.svc.cluster.local:9092
   KAFKA_GROUP_ID: core-pipeline-dev-group
-  POSTGRES_HOST: postgresql.database.svc.cluster.local
-  POSTGRES_PORT: "5432"
-  POSTGRES_DB: core_pipeline_dev
-  POSTGRES_USER: core_user
 
   # Observability
   OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring:4318
@@ -108,9 +143,6 @@ networkPolicy:
   enabled: false
 serviceMonitor:
   enabled: false
-
-# All secrets (DB_PASSWORD, REDIS_PASSWORD, etc.) are injected via envFrom: all-credentials
-# DO NOT define them here as it will override the all-credentials secret
 
 # GitHub Container Registry credentials
 # These should be provided via --set during helm install or via sealed-secrets
