@@ -1,654 +1,248 @@
-# Core Charts - GitOps Infrastructure Documentation
+# Core Infrastructure - Production Kubernetes Setup
 
-## 📋 Table of Contents
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Repository Structure](#repository-structure)
-- [Deployment Flow](#deployment-flow)
-- [Adding New Applications](#adding-new-applications)
-- [Environments](#environments)
-- [CI/CD Integration](#cicd-integration)
-- [Troubleshooting](#troubleshooting)
-- [Server Access](#server-access)
-- [Current Status & TODO](#current-status--todo)
+**Status**: 🚧 Production Hardening in Progress  
+**TLS Certificates**: ✅ All Valid (Let's Encrypt)  
+**Last Updated**: October 2025
 
-## Overview
+## 🎯 Overview
 
-This repository implements a GitOps-based deployment strategy for Kubernetes applications using ArgoCD and Helm charts. It serves as the single source of truth for all application configurations deployed to our Kubernetes cluster.
+Production-ready Kubernetes infrastructure configuration for microservices deployment, monitoring, and observability. Includes PostgreSQL, Redis, Kafka, ArgoCD, Grafana, Loki, Tempo, and application deployments.
 
-### Key Components
-- **ArgoCD**: Continuous delivery tool for Kubernetes
-- **Helm Charts**: Package manager for Kubernetes applications
-- **GitHub Actions**: CI/CD automation
-- **Cert-Manager**: Automatic TLS certificate management
-- **NGINX Ingress**: External traffic routing
+## 📋 Infrastructure Components
 
-## Architecture
+### ✅ Shared Infrastructure
+- **PostgreSQL** - Primary database (database namespace)
+- **Redis** - Caching & queuing (redis namespace)  
+- **Kafka** - Event streaming (kafka namespace)
+- **Kafka UI** - Kafka management interface
+
+### ✅ Monitoring & Observability
+- **Grafana** - Metrics visualization
+- **Prometheus** - Metrics collection
+- **Loki** - Log aggregation
+- **Tempo** - Distributed tracing
+- **AlertManager** - Alert management
+
+### ✅ GitOps & Admin
+- **ArgoCD** - GitOps deployment (argocd namespace)
+- **cert-manager** - Automatic TLS certificate management
+
+### ✅ Applications
+- **core-pipeline-dev** - Development environment (dev-core namespace)
+- **core-pipeline-prod** - Production environment (prod-core namespace)
+
+## 🔗 Service Endpoints
+
+| Service | URL | Status |
+|---------|-----|--------|
+| ArgoCD | https://argo.dev.theedgestory.org | ✅ |
+| Core Pipeline (Dev) | https://core-pipeline.dev.theedgestory.org/api-docs | ✅ |
+| Core Pipeline (Prod) | https://core-pipeline.theedgestory.org/api-docs | ✅ |
+| Kafka UI | https://kafka.dev.theedgestory.org | ✅ |
+| Grafana | https://grafana.dev.theedgestory.org | ✅ |
+| Prometheus | https://prometheus.dev.theedgestory.org | ✅ |
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Kubernetes cluster (k3s/k3d/EKS)
+- kubectl configured
+- Helm 3.x
+- Git
+
+### Initial Setup
+```bash
+# Clone repository
+git clone https://github.com/uz0/core-charts.git
+cd core-charts
+
+# Run setup (creates all secrets, deploys infrastructure)
+./setup.sh
+
+# Verify health
+./health-check.sh
+```
+
+### Daily Operations
+```bash
+# Deploy changes via webhook
+./deploy-hook.sh
+
+# Connect to a pod
+./scripts/connect-pod.sh core-pipeline-dev
+
+# Reveal admin credentials
+./scripts/reveal-secrets.sh
+```
+
+## 📝 Production Readiness Checklist
+
+### ✅ Phase 1: Infrastructure Foundation
+- [x] All TLS certificates working (Let's Encrypt)
+- [x] cert-manager with host network mode
+- [x] Traefik ingress controller operational
+- [x] nginx ingress controller removed
+- [x] Repository structure cleaned
+
+### ✅ Phase 2: Essential Scripts
+- [x] health-check.sh - Endpoint validation
+- [x] deploy-hook.sh - GitHub webhook handler
+- [x] scripts/connect-pod.sh - Quick pod access
+- [x] scripts/reveal-secrets.sh - Admin credential access
+- [x] scripts/fix-cert-manager-network.sh - Cert troubleshooting
+
+### 🚧 Phase 3: Secret Management (IN PROGRESS)
+- [ ] setup.sh - Bootstrap infrastructure from scratch
+- [ ] PostgreSQL user/password generation per service
+- [ ] Redis user/password generation per service  
+- [ ] Automated secret injection on deployment
+- [ ] Secret rotation mechanism
+
+### 📋 Phase 4: Database & Access Control
+- [ ] PostgreSQL role-based access (prevent cross-app access)
+- [ ] Redis ACL configuration (prevent cross-app access)
+- [ ] Database schema documentation
+- [ ] User-to-service mapping documentation
+
+### 📋 Phase 5: CI/CD Pipeline
+- [ ] GitHub Actions workflow for validation
+- [ ] Helm chart linting
+- [ ] Kubernetes manifest validation
+- [ ] Automated testing on PR
+- [ ] Manual approval for production
+- [ ] GitHub webhook integration
+
+### 📋 Phase 6: GitOps Automation
+- [ ] Image tag update automation (core-pipeline)
+- [ ] Automated commit on new image push
+- [ ] ArgoCD auto-sync configuration
+- [ ] Rollback mechanisms
+- [ ] Deployment notifications
+
+### 📋 Phase 7: Monitoring & Persistence
+- [ ] Grafana dashboard configurations
+- [ ] Persistent volume claims
+- [ ] Backup strategies
+- [ ] Disaster recovery procedures
+- [ ] Log retention policies
+
+### 📋 Phase 8: Security & Compliance
+- [ ] Repository secret scanning (git-secrets)
+- [ ] RBAC audit
+- [ ] Network policies
+- [ ] Pod security policies
+- [ ] Vulnerability scanning
+
+### 📋 Phase 9: Performance & Scalability
+- [ ] Resource limits on all pods
+- [ ] Horizontal pod autoscaling
+- [ ] Liveness/readiness probes
+- [ ] Pod disruption budgets
+- [ ] Load testing
+
+### 📋 Phase 10: Documentation & Testing
+- [ ] Architecture diagrams
+- [ ] Troubleshooting runbook
+- [ ] Contribution guidelines
+- [ ] Clean machine deployment test
+- [ ] Production readiness review
+
+## 🔧 Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                     GitHub Repository                        │
-│                    (uz0/core-charts)                        │
-└──────────────┬──────────────────────────────────────────────┘
-               │
-               │ Watches for changes
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                         ArgoCD                               │
-│                  (Kubernetes Cluster)                        │
-├─────────────────────────────────────────────────────────────┤
-│  - Monitors GitHub repository                                │
-│  - Syncs Helm charts to cluster                             │
-│  - Manages application lifecycle                            │
-└──────────────┬──────────────────────────────────────────────┘
-               │
-               │ Deploys
-               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Kubernetes Cluster                        │
-│                   (46.62.223.198)                           │
-├─────────────────────────────────────────────────────────────┤
-│  Namespaces:                                                │
-│  - dev-core (Development environment)                       │
-│  - prod-core (Production environment)                       │
-│  - argocd (ArgoCD system)                                   │
+│                        Traefik Ingress                       │
+│                    (Let's Encrypt TLS)                       │
 └─────────────────────────────────────────────────────────────┘
+                              │
+         ┌────────────────────┼────────────────────┐
+         │                    │                    │
+    ┌────▼─────┐        ┌────▼─────┐        ┌────▼─────┐
+    │  ArgoCD  │        │   Apps   │        │Monitor/  │
+    │          │        │          │        │  Admin   │
+    └────┬─────┘        └────┬─────┘        └────┬─────┘
+         │                   │                    │
+    ┌────▼──────────────────▼────────────────────▼─────┐
+    │           Shared Infrastructure                   │
+    │  PostgreSQL │ Redis │ Kafka │ Loki │ Tempo       │
+    └───────────────────────────────────────────────────┘
 ```
 
-## Repository Structure
+## 🔐 Secret Management
 
-```
-core-charts/
-├── charts/                      # Helm charts directory
-│   └── core-pipeline/           # Example application chart
-│       ├── Chart.yaml           # Chart metadata
-│       ├── values.yaml          # Default values
-│       ├── values-dev.yaml      # Development overrides
-│       ├── values-prod.yaml     # Production overrides
-│       ├── dev.tag.yaml         # Development image tag (auto-updated by CI/CD)
-│       ├── prod.tag.yaml        # Production image tag (auto-updated by CI/CD)
-│       └── templates/           # Kubernetes manifests templates
-│           ├── deployment.yaml
-│           ├── service.yaml
-│           ├── ingress.yaml
-│           ├── configmap.yaml
-│           ├── secret.yaml
-│           ├── hpa.yaml         # Horizontal Pod Autoscaler
-│           ├── pdb.yaml         # Pod Disruption Budget
-│           └── _helpers.tpl     # Template helpers
-├── argocd/
-│   └── applications.yaml        # ArgoCD Application definitions
-├── argocd/
-│   └── applications.yaml        # ArgoCD Application definitions
-└── .github/
-    └── workflows/
-        ├── update-image-tag.yaml   # Reusable workflow for CI/CD
-        └── update-deployment.yaml  # Deployment trigger workflow
-```
+### Secret Types
+1. **Infrastructure Secrets** - PostgreSQL, Redis, Kafka passwords
+2. **Application Secrets** - Per-service database credentials
+3. **Admin Secrets** - ArgoCD, Grafana admin passwords
+4. **CI/CD Secrets** - GitHub tokens for webhooks
 
-## Deployment Flow
-
-### GitOps Workflow
-
-1. **Application Repository** builds and pushes Docker image
-2. **Application CI/CD** calls this repository's workflow to update image tag
-3. **Tag files** (`charts/<app-name>/dev.tag.yaml` or `charts/<app-name>/prod.tag.yaml`) are updated
-4. **ArgoCD** detects changes and syncs to Kubernetes
-5. **Kubernetes** rolls out new deployment
-
-```mermaid
-graph LR
-    A[App Repo Push] --> B[Build Image]
-    B --> C[Push to GHCR]
-    C --> D[Update Tag File]
-    D --> E[ArgoCD Sync]
-    E --> F[K8s Deployment]
-```
-
-## Adding New Applications
-
-### Step 1: Create Helm Chart
-
-Create a new directory under `charts/` with your application name:
-
+### Access Pattern
 ```bash
-mkdir -p charts/my-new-app
-cd charts/my-new-app
+# Each service gets unique credentials
+# - core-pipeline-dev: core_user / <generated-password>
+# - PostgreSQL admin: postgres / <generated-password>
+# - Redis: <generated-password>
 ```
 
-### Step 2: Create Chart.yaml
+## 🐛 Troubleshooting
 
-```yaml
-apiVersion: v2
-name: my-new-app
-description: A Helm chart for My New Application
-type: application
-version: 0.1.0
-appVersion: "1.0.0"
-```
-
-### Step 3: Create Default values.yaml
-
-```yaml
-replicaCount: 1
-
-image:
-  repository: ghcr.io/uz0/my-new-app
-  tag: "latest"
-  pullPolicy: IfNotPresent
-
-service:
-  type: ClusterIP
-  port: 80
-  targetPort: 3000
-
-ingress:
-  enabled: true
-  className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-  hosts:
-    - host: my-app.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: my-app-tls
-      hosts:
-        - my-app.example.com
-
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 5
-  targetCPUUtilizationPercentage: 80
-
-env: []
-```
-
-### Step 4: Create Environment-Specific Values
-
-**values-dev.yaml:**
-```yaml
-replicaCount: 1
-
-ingress:
-  hosts:
-    - host: my-app.dev.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-
-env:
-  - name: NODE_ENV
-    value: development
-  - name: LOG_LEVEL
-    value: debug
-```
-
-**values-prod.yaml:**
-```yaml
-replicaCount: 2
-
-autoscaling:
-  enabled: true
-  minReplicas: 2
-  maxReplicas: 10
-
-ingress:
-  hosts:
-    - host: my-app.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-
-env:
-  - name: NODE_ENV
-    value: production
-  - name: LOG_LEVEL
-    value: info
-```
-
-### Step 5: Copy Templates
-
-Copy templates from `charts/core-pipeline/templates/` and modify as needed.
-
-### Step 6: Create Tag Files
-
-Create these files in your chart directory:
-
-**charts/my-new-app/dev.tag.yaml:**
-```yaml
-image:
-  tag: "develop"
-```
-
-**charts/my-new-app/prod.tag.yaml:**
-```yaml
-image:
-  tag: "v1.0.0"
-```
-
-### Step 7: Add ArgoCD Application
-
-Add to `argocd/applications.yaml`:
-
-```yaml
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: my-new-app-dev
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/uz0/core-charts
-    targetRevision: main
-    path: charts/my-new-app
-    helm:
-      valueFiles:
-      - values.yaml
-      - values-dev.yaml
-      - dev.tag.yaml
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: dev-core
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-    - CreateNamespace=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: my-new-app-prod
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/uz0/core-charts
-    targetRevision: main
-    path: charts/my-new-app
-    helm:
-      valueFiles:
-      - values.yaml
-      - values-prod.yaml
-      - prod.tag.yaml
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: prod-core
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-    - CreateNamespace=true
-```
-
-### Step 8: Configure Application CI/CD
-
-In your application repository, add GitHub Actions workflow:
-
-```yaml
-name: Build and Deploy
-on:
-  push:
-    branches: [main, develop]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
-      
-      - name: Update image tag in core-charts
-        uses: uz0/core-charts/.github/workflows/update-image-tag.yaml@main
-        with:
-          environment: ${{ github.ref == 'refs/heads/main' && 'prod' || 'dev' }}
-          image_tag: ${{ github.sha }}
-          app_name: my-new-app
-        secrets:
-          REPO_ACCESS_TOKEN: ${{ secrets.CHARTS_REPO_TOKEN }}
-```
-
-## Environments
-
-### Development Environment
-- **Namespace**: `dev-core`
-- **Domain Pattern**: `*.dev.theedgestory.org`
-- **Auto-sync**: Enabled
-- **Branch**: Updates from `develop` branch pushes
-
-### Production Environment
-- **Namespace**: `prod-core`
-- **Domain Pattern**: `*.theedgestory.org`
-- **Auto-sync**: Enabled with approval
-- **Branch**: Updates from `main` branch pushes
-
-## CI/CD Integration
-
-### Required Secrets
-
-In your application repository, configure:
-
-1. **CHARTS_REPO_TOKEN**: Personal Access Token with write access to `uz0/core-charts`
-
-### Workflow Integration
-
-The `update-image-tag.yaml` workflow in this repository is designed to be called by application repositories:
-
-```yaml
-on:
-  workflow_call:
-    inputs:
-      environment:
-        required: true
-        type: string
-      image_tag:
-        required: true
-        type: string
-      app_name:
-        required: true
-        type: string
-    secrets:
-      REPO_ACCESS_TOKEN:
-        required: true
-```
-
-## Troubleshooting
-
-### ArgoCD Sync Issues
-
-1. **Check ArgoCD Application Status**:
+### Certificate Issues
 ```bash
-kubectl get applications -n argocd
-kubectl describe application <app-name> -n argocd
+# Check certificate status
+kubectl get certificate -A
+
+# Fix cert-manager network access
+./scripts/fix-cert-manager-network.sh
 ```
 
-2. **Check Repository Access**:
+### Pod Crashes
 ```bash
-kubectl get secrets -n argocd | grep repo
-kubectl describe secret repo-uz0-core-charts -n argocd
+# Check pod logs
+kubectl logs -n <namespace> <pod-name>
+
+# Check credentials
+./scripts/reveal-secrets.sh
 ```
 
-3. **Force Sync**:
+### Database Connection Issues
 ```bash
-kubectl patch application <app-name> -n argocd \
-  --type merge -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}'
+# Verify PostgreSQL
+kubectl exec -n database postgresql-0 -- psql -U postgres -c '\du'
+
+# Verify Redis
+kubectl exec -n redis redis-master-0 -- redis-cli ping
 ```
 
-### Deployment Issues
+## 🎯 Known Issues & Solutions
 
-1. **Check Pod Status**:
-```bash
-kubectl get pods -n <namespace>
-kubectl describe pod <pod-name> -n <namespace>
-kubectl logs <pod-name> -n <namespace>
-```
+| Issue | Impact | Solution | Status |
+|-------|--------|----------|--------|
+| Swagger path was /api-docs not /swagger | Documentation | Updated health-check.sh | ✅ Fixed |
+| cert-manager blocked by kube-router | TLS cert issuance | Host network mode | ✅ Fixed |
+| Dual ingress controllers (nginx + traefik) | Traffic routing | Removed nginx | ✅ Fixed |
+| Credential mismatch in new pods | Pod crashes | Secret management needed | 🚧 In Progress |
 
-2. **Check Ingress**:
-```bash
-kubectl get ingress -n <namespace>
-kubectl describe ingress <ingress-name> -n <namespace>
-```
+## 📚 Additional Resources
 
-3. **Check Services**:
-```bash
-kubectl get svc -n <namespace>
-kubectl describe svc <service-name> -n <namespace>
-```
+- [ArgoCD Documentation](https://argo-cd.readthedocs.io/)
+- [cert-manager Documentation](https://cert-manager.io/docs/)
+- [Traefik Documentation](https://doc.traefik.io/traefik/)
+- [Production Readiness Roadmap](./PRODUCTION_READINESS.md)
 
-## Server Access
+## 🤝 Contributing
 
-### SSH Connection
-```bash
-ssh -i ~/.ssh/uz0 root@46.62.223.198
-# Passphrase: 123454
-```
+1. Create feature branch
+2. Make changes
+3. Run validation: `./health-check.sh`
+4. Create PR
+5. Automated checks will run
+6. Manual approval for production changes
 
-### Quick Commands
+## 📄 License
 
-**Check cluster status**:
-```bash
-kubectl get nodes
-kubectl top nodes
-kubectl get pods -A | grep -v Running
-```
-
-**Check ArgoCD**:
-```bash
-kubectl get applications -n argocd
-kubectl get pods -n argocd
-```
-
-**Check deployments**:
-```bash
-kubectl get deployments -n dev-core
-kubectl get deployments -n prod-core
-```
-
-**View logs**:
-```bash
-kubectl logs -f deployment/<app-name> -n <namespace>
-```
-
-## Current Status & TODO
-
-### Current Infrastructure State
-*Last checked: September 29, 2025*
-
-#### ⚠️ Access Issues
-- **SSH Access**: Failed - Invalid SSH key format issue prevents direct server access
-- **kubectl Access**: Limited - Local context has insufficient RBAC permissions
-- **Required Action**: Need to fix SSH key or get proper credentials from administrator
-
-#### 🔴 Application Status
-- **Development**: https://core-pipeline.dev.theedgestory.org/
-  - Status: **404 Not Found**
-  - Swagger: **404 Not Found** at `/swagger`
-- **Production**: https://core-pipeline.theedgestory.org/
-  - Status: **404 Not Found**
-  - Swagger: **404 Not Found** at `/swagger`
-
-### 🚨 Critical TODO List
-
-#### Immediate Actions (Do First)
-1. **[ ] Fix SSH Access**
-   - Resolve SSH key format issue for `root@46.62.223.198`
-   - Alternative: Get new SSH key or use password authentication
-   - Command to test: `ssh -i ~/.ssh/uz0 root@46.62.223.198`
-
-2. **[ ] Configure ArgoCD Repository Access**
-   ```bash
-   # On server, create repository secret with GitHub token
-   kubectl create secret generic repo-uz0-core-charts \
-     --from-literal=type=git \
-     --from-literal=url=https://github.com/uz0/core-charts.git \
-     --from-literal=username=not-used \
-     --from-literal=password=<GITHUB_PERSONAL_ACCESS_TOKEN> \
-     -n argocd --dry-run=client -o yaml | kubectl apply -f -
-   ```
-
-3. **[ ] Apply ArgoCD Applications**
-   ```bash
-   # On server, apply ArgoCD applications
-   kubectl apply -f https://raw.githubusercontent.com/uz0/core-charts/main/argocd/applications.yaml
-   ```
-
-#### Deployment Actions
-4. **[ ] Deploy Applications Manually (if ArgoCD fails)**
-   ```bash
-   # Direct deployment as fallback
-   kubectl apply -f https://raw.githubusercontent.com/uz0/core-charts/deploy-core-pipeline/deploy.yaml
-   ```
-
-5. **[ ] Verify Deployments**
-   ```bash
-   kubectl get pods -n dev-core
-   kubectl get pods -n prod-core
-   kubectl get ingress -A | grep core
-   ```
-
-6. **[ ] Check ArgoCD Sync Status**
-   ```bash
-   kubectl get applications -n argocd
-   kubectl describe application core-pipeline-dev -n argocd
-   kubectl describe application core-pipeline-prod -n argocd
-   ```
-
-#### Configuration Actions
-7. **[ ] Update Image Repositories**
-   - Current placeholder: `swaggerapi/petstore3:unstable`
-   - Need actual application image from `ghcr.io/uz0/core-pipeline`
-
-8. **[ ] Configure CI/CD Pipeline**
-   - Set up GitHub Actions in `core-pipeline` repository
-   - Add `CHARTS_REPO_TOKEN` secret with write access to `uz0/core-charts`
-
-9. **[ ] Fix Ingress Configuration**
-   ```bash
-   # Check ingress controller
-   kubectl get pods -n ingress-nginx
-   kubectl get ingress -A
-   ```
-
-10. **[ ] Verify DNS Resolution**
-    ```bash
-    nslookup core-pipeline.dev.theedgestory.org
-    nslookup core-pipeline.theedgestory.org
-    ```
-
-#### Long-term Actions
-11. **[ ] Set up Monitoring**
-    - Configure Prometheus/Grafana for metrics
-    - Set up alerting rules
-
-12. **[ ] Configure Backup Strategy**
-    - Set up regular backups of persistent data
-    - Document recovery procedures
-
-13. **[ ] Security Hardening**
-    - Implement NetworkPolicies
-    - Set up PodSecurityPolicies
-    - Regular security scanning
-
-### 📝 Commands to Run on Server
-
-Once SSH access is restored, execute these commands in order:
-
-```bash
-#!/bin/bash
-
-# 1. Check cluster health
-kubectl get nodes
-kubectl top nodes
-
-# 2. Check ArgoCD
-kubectl get pods -n argocd
-kubectl get applications -n argocd
-
-# 3. Add repository secret (replace YOUR_GITHUB_TOKEN)
-kubectl create secret generic repo-uz0-core-charts \
-  --from-literal=type=git \
-  --from-literal=url=https://github.com/uz0/core-charts.git \
-  --from-literal=username=not-used \
-  --from-literal=password=YOUR_GITHUB_TOKEN \
-  -n argocd --dry-run=client -o yaml | kubectl apply -f -
-
-# 4. Apply ArgoCD applications
-kubectl apply -f https://raw.githubusercontent.com/uz0/core-charts/main/argocd/applications.yaml
-
-# 5. Force sync
-kubectl patch application core-pipeline-dev -n argocd \
-  --type merge -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}'
-kubectl patch application core-pipeline-prod -n argocd \
-  --type merge -p '{"metadata":{"annotations":{"argocd.argoproj.io/refresh":"hard"}}}'
-
-# 6. Check deployment status
-kubectl get all -n dev-core
-kubectl get all -n prod-core
-
-# 7. Check logs if pods are failing
-kubectl logs -n dev-core -l app.kubernetes.io/name=core-pipeline
-kubectl logs -n prod-core -l app.kubernetes.io/name=core-pipeline
-
-# 8. Verify ingress
-kubectl get ingress -A
-kubectl describe ingress core-pipeline -n dev-core
-kubectl describe ingress core-pipeline -n prod-core
-```
-
-### 🔧 Troubleshooting Guide
-
-**If applications still show 404:**
-1. Check if pods are running: `kubectl get pods -n dev-core`
-2. Check service endpoints: `kubectl get endpoints -n dev-core`
-3. Check ingress controller: `kubectl get pods -n ingress-nginx`
-4. Verify certificate: `kubectl get certificate -n dev-core`
-
-**If ArgoCD can't sync:**
-1. Check repository access: `kubectl logs -n argocd deployment/argocd-repo-server`
-2. Check application status: `kubectl describe application core-pipeline-dev -n argocd`
-3. Manual sync: `argocd app sync core-pipeline-dev`
-
-**If pods are crashing:**
-1. Check logs: `kubectl logs <pod-name> -n <namespace>`
-2. Describe pod: `kubectl describe pod <pod-name> -n <namespace>`
-3. Check resources: `kubectl top pods -n <namespace>`
+[Your License Here]
 
 ---
 
-## Quick Start Commands
-
-### Deploy Everything
-```bash
-# On the server
-kubectl apply -f https://raw.githubusercontent.com/uz0/core-charts/main/argocd/applications.yaml
-```
-
-### Check Status
-```bash
-./verify-deployment.sh
-```
-
-### Update Image Tag (from app repo)
-```bash
-curl -X POST \
-  -H "Accept: application/vnd.github.v3+json" \
-  -H "Authorization: token $GITHUB_TOKEN" \
-  https://api.github.com/repos/uz0/core-charts/dispatches \
-  -d '{"event_type":"update-image","client_payload":{"environment":"dev","tag":"v1.2.3","app":"my-app"}}'
-```
-
----
-
-*Last Updated: September 2025*
-*Maintained by: DevOps Team*
+**Maintained by**: TheEdgeStory Team  
+**Contact**: admin@theedgestory.org
