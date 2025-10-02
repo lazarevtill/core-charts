@@ -34,10 +34,10 @@ echo "ArgoCD:"
 curl -I -s https://argo.dev.theedgestory.org 2>&1 | head -3
 echo ""
 echo "Core Pipeline Dev (Swagger):"
-curl -I -s https://core-pipeline.dev.theedgestory.org/swagger 2>&1 | head -3
+curl -I -s https://core-pipeline.dev.theedgestory.org/api-docs 2>&1 | head -3
 echo ""
 echo "Core Pipeline Prod (Swagger):"
-curl -I -s https://core-pipeline.theedgestory.org/swagger 2>&1 | head -3
+curl -I -s https://core-pipeline.theedgestory.org/api-docs 2>&1 | head -3
 echo ""
 echo "Kafka UI:"
 curl -I -s https://kafka.dev.theedgestory.org 2>&1 | head -3
