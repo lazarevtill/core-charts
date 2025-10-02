@@ -1,0 +1,21 @@
+[Unit]
+Description=GitHub Webhook Receiver for Core Charts
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/core-charts
+ExecStart=/usr/bin/node /root/core-charts/webhook-receiver.js
+Restart=always
+RestartSec=10
+Environment="WEBHOOK_PORT=3001"
+Environment="WEBHOOK_SECRET=your-secret-here"
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=webhook-receiver
+
+[Install]
+WantedBy=multi-user.target
