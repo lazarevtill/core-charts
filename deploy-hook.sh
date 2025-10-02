@@ -41,6 +41,31 @@ echo "=== 4. Verify infrastructure pods ==="
 kubectl get pods -n infrastructure
 echo ""
 
+# 4.5. Copy fresh secrets from infrastructure to application namespaces
+echo "=== 4.5. Replicate infrastructure secrets to application namespaces ==="
+echo "Copying PostgreSQL dev secrets..."
+kubectl get secret postgres-core-pipeline-dev-secret -n infrastructure -o yaml | \
+  sed 's/namespace: infrastructure/namespace: dev-core/' | \
+  kubectl apply -f - || echo "⚠️  Failed to copy dev PostgreSQL secret"
+
+echo "Copying PostgreSQL prod secrets..."
+kubectl get secret postgres-core-pipeline-prod-secret -n infrastructure -o yaml | \
+  sed 's/namespace: infrastructure/namespace: prod-core/' | \
+  kubectl apply -f - || echo "⚠️  Failed to copy prod PostgreSQL secret"
+
+echo "Copying Redis dev secrets..."
+kubectl get secret redis-dev-secret -n infrastructure -o yaml | \
+  sed 's/namespace: infrastructure/namespace: dev-core/' | \
+  kubectl apply -f - || echo "⚠️  Failed to copy dev Redis secret"
+
+echo "Copying Redis prod secrets..."
+kubectl get secret redis-prod-secret -n infrastructure -o yaml | \
+  sed 's/namespace: infrastructure/namespace: prod-core/' | \
+  kubectl apply -f - || echo "⚠️  Failed to copy prod Redis secret"
+
+echo "✅ Secrets replicated to application namespaces"
+echo ""
+
 # 5. Deploy dev application
 echo "=== 5. Deploy core-pipeline-dev application ==="
 helm upgrade --install core-pipeline-dev ./charts/core-pipeline \
