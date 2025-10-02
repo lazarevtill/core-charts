@@ -1,3 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infrastructure
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infrastructure
+  source:
+    repoURL: https://github.com/uz0/core-charts.git
+    targetRevision: HEAD
+    path: charts/infrastructure
+    helm:
+      valueFiles:
+        - values.yaml
+      parameters:
+        - name: kafka.enabled
+          value: "false"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: infrastructure
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    # Manual sync only - webhook handles deployment
+    automated: null
+
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -6,43 +34,25 @@ metadata:
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-    link.argocd.argoproj.io/external-link: https://core-pipeline.dev.theedgestory.org
 spec:
-  project: default
-  
+  project: applications
   source:
-    repoURL: https://github.com/uz0/core-charts
-    targetRevision: main
+    repoURL: https://github.com/uz0/core-charts.git
+    targetRevision: HEAD
     path: charts/core-pipeline
     helm:
       valueFiles:
-      - values.yaml
-      - values-dev.yaml
-      - dev.tag.yaml
-  
+        - values.yaml
+        - values-dev.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: dev-core
-  
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-      allowEmpty: false
     syncOptions:
-    - CreateNamespace=true
-    - PrunePropagationPolicy=foreground
-    - ApplyOutOfSyncOnly=true
-    retry:
-      limit: 5
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 3m
-  
-  revisionHistoryLimit: 10
+      - CreateNamespace=true
+    # Manual sync only - webhook handles deployment
+    automated: null
+
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -51,46 +61,21 @@ metadata:
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
-  annotations:
-    argocd.argoproj.io/sync-wave: "2"
-    link.argocd.argoproj.io/external-link: https://core-pipeline.theedgestory.org
 spec:
-  project: default
-  
+  project: applications
   source:
-    repoURL: https://github.com/uz0/core-charts
-    targetRevision: main
+    repoURL: https://github.com/uz0/core-charts.git
+    targetRevision: HEAD
     path: charts/core-pipeline
     helm:
       valueFiles:
-      - values.yaml
-      - values-prod.yaml
-      - prod.tag.yaml
-  
+        - values.yaml
+        - values-prod.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: prod-core
-  
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-      allowEmpty: false
     syncOptions:
-    - CreateNamespace=true
-    - PrunePropagationPolicy=foreground
-    - ApplyOutOfSyncOnly=true
-    retry:
-      limit: 5
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 3m
-  
-  revisionHistoryLimit: 10
-  
-  ignoreDifferences:
-  - group: apps
-    kind: Deployment
-    jsonPointers:
-    - /spec/replicas
+      - CreateNamespace=true
+    # Manual sync only - webhook handles deployment
+    automated: null
