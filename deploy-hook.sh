@@ -43,25 +43,36 @@ echo ""
 
 # 4.5. Copy fresh secrets from infrastructure to application namespaces
 echo "=== 4.5. Replicate infrastructure secrets to application namespaces ==="
+
+# Delete old secrets first to avoid conflicts
+kubectl delete secret postgres-core-pipeline-dev-secret -n dev-core --ignore-not-found
+kubectl delete secret postgres-core-pipeline-prod-secret -n prod-core --ignore-not-found
+kubectl delete secret redis-dev-secret -n dev-core --ignore-not-found
+kubectl delete secret redis-prod-secret -n prod-core --ignore-not-found
+
 echo "Copying PostgreSQL dev secrets..."
 kubectl get secret postgres-core-pipeline-dev-secret -n infrastructure -o yaml | \
   sed 's/namespace: infrastructure/namespace: dev-core/' | \
-  kubectl apply -f - || echo "⚠️  Failed to copy dev PostgreSQL secret"
+  sed '/resourceVersion/d' | sed '/uid:/d' | sed '/creationTimestamp/d' | \
+  kubectl create -f -
 
 echo "Copying PostgreSQL prod secrets..."
 kubectl get secret postgres-core-pipeline-prod-secret -n infrastructure -o yaml | \
   sed 's/namespace: infrastructure/namespace: prod-core/' | \
-  kubectl apply -f - || echo "⚠️  Failed to copy prod PostgreSQL secret"
+  sed '/resourceVersion/d' | sed '/uid:/d' | sed '/creationTimestamp/d' | \
+  kubectl create -f -
 
 echo "Copying Redis dev secrets..."
 kubectl get secret redis-dev-secret -n infrastructure -o yaml | \
   sed 's/namespace: infrastructure/namespace: dev-core/' | \
-  kubectl apply -f - || echo "⚠️  Failed to copy dev Redis secret"
+  sed '/resourceVersion/d' | sed '/uid:/d' | sed '/creationTimestamp/d' | \
+  kubectl create -f -
 
 echo "Copying Redis prod secrets..."
 kubectl get secret redis-prod-secret -n infrastructure -o yaml | \
   sed 's/namespace: infrastructure/namespace: prod-core/' | \
-  kubectl apply -f - || echo "⚠️  Failed to copy prod Redis secret"
+  sed '/resourceVersion/d' | sed '/uid:/d' | sed '/creationTimestamp/d' | \
+  kubectl create -f -
 
 echo "✅ Secrets replicated to application namespaces"
 echo ""
