@@ -1,4 +1,4 @@
-# Redis configuration with automatic password generation
+# Redis configuration with ACL for security isolation
 redis:
   architecture: standalone
 
@@ -15,6 +15,9 @@ redis:
     password: ""
     existingSecret: ""
     existingSecretPasswordKey: ""
+
+  # Enable ACL for user isolation
+  aclEnabled: true
 
   master:
     persistence:
@@ -40,7 +43,7 @@ redis:
   replica:
     replicaCount: 0
 
-# Generate secrets for different environments
+# Generate secrets for different environments with unique passwords
 environments:
   - name: dev
     namespace: dev-core

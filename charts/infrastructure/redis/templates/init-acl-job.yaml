@@ -1,0 +1,84 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-redis-acl-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+    role: init-acl
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app: redis-acl-init
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: {{ .Release.Name }}-redis-acl-init
+      containers:
+      - name: init-redis-acl
+        image: docker.io/bitnamilegacy/redis:7.4.0-debian-12-r4
+        command:
+        - /bin/bash
+        - -c
+        - |
+          set -e
+
+          # Wait for Redis to be ready
+          echo "Waiting for Redis..."
+          until REDISCLI_AUTH=$REDIS_ADMIN_PASSWORD redis-cli -h {{ .Release.Name }}-redis-master.{{ .Release.Namespace }}.svc.cluster.local ping > /dev/null 2>&1; do
+            echo "Redis not ready, waiting..."
+            sleep 2
+          done
+          echo "Redis is ready!"
+
+          {{- range .Values.environments }}
+          echo "Creating ACL user for {{ .name }} environment..."
+
+          # Get password from secret
+          REDIS_{{ .name | upper }}_PASSWORD=$(cat /secrets/redis-{{ .name }}/REDIS_PASSWORD)
+
+          # Create Redis ACL user
+          REDISCLI_AUTH=$REDIS_ADMIN_PASSWORD redis-cli -h {{ $.Release.Name }}-redis-master.{{ $.Release.Namespace }}.svc.cluster.local <<-EOCMD
+            ACL SETUSER redis_{{ .name }}_user on >${REDIS_{{ .name | upper }}_PASSWORD} ~* +@all
+            ACL SAVE
+EOCMD
+
+          echo "✓ Created ACL user: redis_{{ .name }}_user"
+          {{- end }}
+
+          echo "Redis ACL initialization completed successfully!"
+        env:
+        - name: REDIS_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-redis
+              key: redis-password
+        volumeMounts:
+        {{- range .Values.environments }}
+        - name: redis-{{ .name }}-secret
+          mountPath: /secrets/redis-{{ .name }}
+          readOnly: true
+        {{- end }}
+      volumes:
+      {{- range .Values.environments }}
+      - name: redis-{{ .name }}-secret
+        secret:
+          secretName: redis-{{ .name }}-secret
+          items:
+          - key: REDIS_PASSWORD
+            path: REDIS_PASSWORD
+      {{- end }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-redis-acl-init
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: redis
+    role: init-acl
