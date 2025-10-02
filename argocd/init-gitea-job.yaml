@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitea-init-script
+  namespace: argocd
+data:
+  init.sh: |
+    #!/bin/bash
+    set -e
+    
+    echo "=== Initializing Gitea for ArgoCD ==="
+    
+    # Wait for Gitea API to be ready
+    echo "Waiting for Gitea API..."
+    for i in {1..60}; do
+      if curl -f http://gitea.argocd.svc.cluster.local:3000 >/dev/null 2>&1; then
+        echo "✅ Gitea is ready"
+        break
+      fi
+      echo "Waiting... ($i/60)"
+      sleep 5
+    done
+    
+    # Clone from GitHub
+    echo "Cloning from GitHub..."
+    cd /tmp
+    git clone --depth 1 https://github.com/uz0/core-charts.git
+    cd core-charts
+    
+    # Create user and repository via API (skip if exists)
+    echo "Creating Gitea user and repository..."
+    
+    # Create admin user
+    curl -X POST "http://gitea.argocd.svc.cluster.local:3000/api/v1/admin/users" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "username": "argocd",
+        "password": "argocd-password",
+        "email": "argocd@local",
+        "must_change_password": false,
+        "send_notify": false
+      }' || echo "User may already exist"
+    
+    # Create repository using basic auth
+    curl -X POST "http://argocd:argocd-password@gitea.argocd.svc.cluster.local:3000/api/v1/user/repos" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "name": "core-charts",
+        "private": false,
+        "auto_init": false
+      }' || echo "Repository may already exist"
+    
+    # Push to Gitea
+    echo "Pushing to Gitea..."
+    git remote add gitea http://argocd:argocd-password@gitea.argocd.svc.cluster.local:3000/argocd/core-charts.git
+    git push gitea main --force
+    
+    echo "✅ Gitea initialization complete"
+    echo "Repository URL: http://gitea.argocd.svc.cluster.local:3000/argocd/core-charts.git"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gitea-init
+  namespace: argocd
+spec:
+  ttlSecondsAfterFinished: 300
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: git-init
+          image: alpine/git:latest
+          command: ["/bin/sh", "/scripts/init.sh"]
+          volumeMounts:
+            - name: init-script
+              mountPath: /scripts
+          env:
+            - name: GIT_SSL_NO_VERIFY
+              value: "true"
+      volumes:
+        - name: init-script
+          configMap:
+            name: gitea-init-script
+            defaultMode: 0755

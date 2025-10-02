@@ -1,42 +1,27 @@
 #!/bin/bash
-# Initialize Gitea with core-charts repository for ArgoCD
+# Initialize Gitea with core-charts repository for ArgoCD visualization
+# This script runs a Kubernetes Job that handles the initialization from inside the cluster
 
 set -e
 
 echo "=== Initializing Local Git Server (Gitea) for ArgoCD ==="
 
-# Deploy Gitea
-echo "Deploying Gitea..."
-kubectl apply -f /root/core-charts/argocd/gitea.yaml
+# Apply the initialization job
+echo "Creating Gitea initialization job..."
+kubectl apply -f /root/core-charts/argocd/init-gitea-job.yaml
 
-# Wait for Gitea to be ready
-echo "Waiting for Gitea to be ready..."
-kubectl wait --for=condition=ready pod -l app=gitea -n argocd --timeout=300s
+# Wait for job to complete
+echo "Waiting for initialization to complete..."
+kubectl wait --for=condition=complete job/gitea-init -n argocd --timeout=600s
 
-# Create admin user and repository via Gitea CLI
-echo "Creating admin user and repository..."
-kubectl exec -n argocd deployment/gitea -- gitea admin user create \
-  --username argocd \
-  --password argocd-password \
-  --email argocd@local \
-  --admin || echo "User may already exist"
+# Show job logs
+echo ""
+echo "=== Initialization Logs ==="
+kubectl logs job/gitea-init -n argocd
 
-# Create repository
-kubectl exec -n argocd deployment/gitea -- gitea admin repo create \
-  --owner argocd \
-  --name core-charts \
-  --private=false || echo "Repository may already exist"
-
-# Clone and push to Gitea
-echo "Pushing repository to Gitea..."
-cd /root/core-charts
-
-# Add Gitea as remote
-git remote remove gitea 2>/dev/null || true
-git remote add gitea http://argocd:argocd-password@gitea.argocd.svc.cluster.local:3000/argocd/core-charts.git
-
-# Push to Gitea
-git push gitea main --force
-
-echo "✅ Gitea initialized successfully"
+echo ""
+echo "✅ Gitea initialization complete!"
 echo "Repository URL: http://gitea.argocd.svc.cluster.local:3000/argocd/core-charts.git"
+echo ""
+echo "To update the repository manually from inside the cluster:"
+echo "  kubectl run git-push --rm -it --image=alpine/git --restart=Never -- sh -c 'git clone https://github.com/uz0/core-charts.git /tmp/repo && cd /tmp/repo && git remote add gitea http://argocd:argocd-password@gitea.argocd.svc.cluster.local:3000/argocd/core-charts.git && git push gitea main --force'"

@@ -20,10 +20,11 @@ echo ""
 
 # 1.5. Mirror to local Gitea for ArgoCD visualization
 echo "=== 1.5. Mirror repository to local Gitea for ArgoCD ==="
-if git remote | grep -q gitea; then
-  git push gitea main --force 2>/dev/null && echo "✅ Mirrored to Gitea" || echo "⚠️  Gitea push failed (may not be initialized yet)"
+if [ -f "$SCRIPT_DIR/argocd/sync-to-gitea.sh" ]; then
+  "$SCRIPT_DIR/argocd/sync-to-gitea.sh" "$SCRIPT_DIR" &
+  echo "✅ Gitea sync triggered in background"
 else
-  echo "⚠️  Gitea remote not configured, skipping mirror"
+  echo "⚠️  Gitea sync script not found, skipping"
 fi
 echo ""
 
