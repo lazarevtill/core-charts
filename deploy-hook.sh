@@ -18,6 +18,15 @@ git pull origin main
 echo "✅ Code updated to latest commit: $(git rev-parse --short HEAD)"
 echo ""
 
+# 1.5. Mirror to local Gitea for ArgoCD visualization
+echo "=== 1.5. Mirror repository to local Gitea for ArgoCD ==="
+if git remote | grep -q gitea; then
+  git push gitea main --force 2>/dev/null && echo "✅ Mirrored to Gitea" || echo "⚠️  Gitea push failed (may not be initialized yet)"
+else
+  echo "⚠️  Gitea remote not configured, skipping mirror"
+fi
+echo ""
+
 # 2. Build Helm dependencies (vendor charts)
 echo "=== 2. Build Helm chart dependencies ==="
 echo "Building infrastructure chart dependencies..."

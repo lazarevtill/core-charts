@@ -8,7 +8,8 @@ metadata:
 spec:
   project: infrastructure
   source:
-    repoURL: https://github.com/uz0/core-charts.git
+    # Local Gitea server - no external network dependency
+    repoURL: http://gitea.argocd.svc.cluster.local:3000/argocd/core-charts.git
     targetRevision: HEAD
     path: charts/infrastructure
     helm:
@@ -23,7 +24,7 @@ spec:
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
-    # Manual sync only - webhook handles deployment
+    # Manual sync only - webhook handles deployment, ArgoCD just visualizes
     automated: null
 
 ---
@@ -37,7 +38,8 @@ metadata:
 spec:
   project: applications
   source:
-    repoURL: https://github.com/uz0/core-charts.git
+    # Local Gitea server - no external network dependency
+    repoURL: http://gitea.argocd.svc.cluster.local:3000/argocd/core-charts.git
     targetRevision: HEAD
     path: charts/core-pipeline
     helm:
@@ -50,7 +52,7 @@ spec:
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
-    # Manual sync only - webhook handles deployment
+    # Manual sync only - webhook handles deployment, ArgoCD just visualizes
     automated: null
 
 ---
@@ -64,7 +66,8 @@ metadata:
 spec:
   project: applications
   source:
-    repoURL: https://github.com/uz0/core-charts.git
+    # Local Gitea server - no external network dependency
+    repoURL: http://gitea.argocd.svc.cluster.local:3000/argocd/core-charts.git
     targetRevision: HEAD
     path: charts/core-pipeline
     helm:
@@ -77,5 +80,5 @@ spec:
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
-    # Manual sync only - webhook handles deployment
+    # Manual sync only - webhook handles deployment, ArgoCD just visualizes
     automated: null
