@@ -31,8 +31,6 @@ spec:
           ports:
             - containerPort: 3000
               name: http
-            - containerPort: 22
-              name: ssh
           env:
             - name: GITEA__server__ROOT_URL
               value: "http://gitea.argocd.svc.cluster.local:3000"
@@ -40,12 +38,11 @@ spec:
               value: "gitea.argocd.svc.cluster.local"
             - name: GITEA__server__HTTP_PORT
               value: "3000"
+            # Disable SSH - we only need HTTP for ArgoCD
             - name: GITEA__server__DISABLE_SSH
-              value: "false"
-            - name: GITEA__server__START_SSH_SERVER
               value: "true"
-            - name: GITEA__server__SSH_PORT
-              value: "22"
+            - name: GITEA__server__START_SSH_SERVER
+              value: "false"
             - name: GITEA__database__DB_TYPE
               value: "sqlite3"
             - name: GITEA__security__INSTALL_LOCK
@@ -79,7 +76,4 @@ spec:
     - name: http
       port: 3000
       targetPort: 3000
-    - name: ssh
-      port: 22
-      targetPort: 22
   type: ClusterIP
