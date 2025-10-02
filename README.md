@@ -99,11 +99,11 @@ cd core-charts
 - [x] Automated secret injection on deployment
 - [ ] Secret rotation mechanism
 
-### 📋 Phase 4: Database & Access Control
-- [ ] PostgreSQL role-based access (prevent cross-app access)
-- [ ] Redis ACL configuration (prevent cross-app access)
-- [ ] Database schema documentation
-- [ ] User-to-service mapping documentation
+### ✅ Phase 4: Database & Access Control
+- [x] PostgreSQL role-based access (prevent cross-app access)
+- [x] Redis ACL configuration (prevent cross-app access)
+- [x] Database schema documentation
+- [x] User-to-service mapping documentation
 
 ### ✅ Phase 5: CI/CD Pipeline
 - [x] GitHub Actions workflow for validation (.github/workflows/ci.yaml)
@@ -169,22 +169,92 @@ cd core-charts
     └───────────────────────────────────────────────────┘
 ```
 
-## 🔐 Secret Management
 
-### Secret Types
-1. **Infrastructure Secrets** - PostgreSQL, Redis, Kafka passwords
-2. **Application Secrets** - Per-service database credentials
-3. **Admin Secrets** - ArgoCD, Grafana admin passwords
-4. **CI/CD Secrets** - GitHub tokens for webhooks
+## 🔐 Secret Management & Security Isolation
 
-### Access Pattern
+### Database & User Mapping
+
+| Application | PostgreSQL Database | PostgreSQL User | Redis ACL User | Namespace |
+|-------------|-------------------|-----------------|----------------|-----------|
+| core-pipeline-dev | core_pipeline_dev | core_dev_user | redis_dev_user | dev-core |
+| core-pipeline-prod | core_pipeline_prod | core_prod_user | redis_prod_user | prod-core |
+| Admin/Infrastructure | postgres | postgres | default | database/redis |
+
+### Security Isolation Model
+
+**PostgreSQL Isolation:**
+- Each application has a **dedicated database** with a **unique user**
+- `core_dev_user` can ONLY access `core_pipeline_dev` database
+- `core_prod_user` can ONLY access `core_pipeline_prod` database  
+- Cross-application access is prevented at the PostgreSQL user permission level
+- Passwords are auto-generated (32 characters) and unique per user
+
+**Redis Isolation:**
+- Redis ACL configured with separate users per environment
+- `redis_dev_user` - dedicated ACL user for dev applications
+- `redis_prod_user` - dedicated ACL user for prod applications
+- Each user has unique auto-generated password (32 characters)
+- ACL rules prevent cross-environment access
+
+**Secret Replication:**
+- Secrets are replicated to application namespaces with strict isolation:
+  - `dev-core` namespace: receives ONLY dev secrets (postgres-core-pipeline-dev-secret, redis-dev-secret)
+  - `prod-core` namespace: receives ONLY prod secrets (postgres-core-pipeline-prod-secret, redis-prod-secret)
+- Secret replicator job ensures proper namespace isolation
+
+### Secret Types & Storage
+
+1. **Infrastructure Admin Secrets** (database/redis namespaces)
+   - PostgreSQL: `postgresql` secret (admin password)
+   - Redis: `redis` secret (admin password)
+
+2. **Application Database Secrets** (database namespace)
+   - `postgres-core-pipeline-dev-secret` (DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, DB_DATABASE)
+   - `postgres-core-pipeline-prod-secret` (DB_USERNAME, DB_PASSWORD, DB_HOST, DB_PORT, DB_DATABASE)
+
+3. **Application Redis Secrets** (redis namespace)  
+   - `redis-dev-secret` (REDIS_USERNAME, REDIS_PASSWORD, REDIS_HOST, REDIS_PORT, REDIS_URL)
+   - `redis-prod-secret` (REDIS_USERNAME, REDIS_PASSWORD, REDIS_HOST, REDIS_PORT, REDIS_URL)
+
+4. **Replicated Application Secrets** (dev-core/prod-core namespaces)
+   - Auto-replicated from source namespaces via secret-replicator job
+   - Applications consume secrets from their own namespace only
+
+### Access Credentials
+
 ```bash
-# Each service gets unique credentials
-# - core-pipeline-dev: core_user / <generated-password>
-# - PostgreSQL admin: postgres / <generated-password>
-# - Redis: <generated-password>
+# View PostgreSQL dev credentials
+kubectl -n database get secret postgres-core-pipeline-dev-secret -o yaml
+
+# View PostgreSQL prod credentials  
+kubectl -n database get secret postgres-core-pipeline-prod-secret -o yaml
+
+# View Redis dev credentials
+kubectl -n redis get secret redis-dev-secret -o yaml
+
+# View Redis prod credentials
+kubectl -n redis get secret redis-prod-secret -o yaml
+
+# Admin access (superuser only)
+./scripts/reveal-secrets.sh
 ```
 
+### How It Works
+
+1. **Setup Phase** (`setup.sh`):
+   - Generates admin passwords for PostgreSQL and Redis
+   - Creates infrastructure namespaces
+   - Deploys Helm charts which auto-generate application-specific secrets
+
+2. **Initialization Phase** (Helm hooks):
+   - PostgreSQL init job creates databases and users with generated passwords
+   - Redis ACL init job creates ACL users with generated passwords
+   - Secret replicator copies appropriate secrets to application namespaces
+
+3. **Runtime Phase**:
+   - Applications read secrets from their namespace (dev-core or prod-core)
+   - Each app can only access its designated database/Redis instance
+   - Cross-environment access is prevented by ACLs and user permissions
 ## 🐛 Troubleshooting
 
 ### Certificate Issues
