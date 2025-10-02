@@ -90,12 +90,13 @@ cd core-charts
 - [x] scripts/connect-pod.sh - Quick pod access
 - [x] scripts/reveal-secrets.sh - Admin credential access
 - [x] scripts/fix-cert-manager-network.sh - Cert troubleshooting
+- [x] scripts/fix-acme-client.sh - ACME client recovery
 
-### 🚧 Phase 3: Secret Management (IN PROGRESS)
-- [ ] setup.sh - Bootstrap infrastructure from scratch
-- [ ] PostgreSQL user/password generation per service
-- [ ] Redis user/password generation per service  
-- [ ] Automated secret injection on deployment
+### ✅ Phase 3: Secret Management
+- [x] setup.sh - Bootstrap infrastructure from scratch
+- [x] PostgreSQL user/password generation per service
+- [x] Redis user/password generation per service  
+- [x] Automated secret injection on deployment
 - [ ] Secret rotation mechanism
 
 ### 📋 Phase 4: Database & Access Control
@@ -104,18 +105,18 @@ cd core-charts
 - [ ] Database schema documentation
 - [ ] User-to-service mapping documentation
 
-### 📋 Phase 5: CI/CD Pipeline
-- [ ] GitHub Actions workflow for validation
-- [ ] Helm chart linting
-- [ ] Kubernetes manifest validation
-- [ ] Automated testing on PR
-- [ ] Manual approval for production
-- [ ] GitHub webhook integration
+### ✅ Phase 5: CI/CD Pipeline
+- [x] GitHub Actions workflow for validation (.github/workflows/ci.yaml)
+- [x] Helm chart linting (.github/workflows/helm-lint.yaml)
+- [x] Kubernetes manifest validation
+- [x] Automated testing on PR
+- [x] Manual approval for production
+- [x] GitHub webhook integration (deploy-hook.sh)
 
-### 📋 Phase 6: GitOps Automation
-- [ ] Image tag update automation (core-pipeline)
-- [ ] Automated commit on new image push
-- [ ] ArgoCD auto-sync configuration
+### ✅ Phase 6: GitOps Automation
+- [x] Image tag update automation (.github/workflows/update-image-tag.yaml)
+- [x] Automated commit on new image push
+- [x] ArgoCD auto-sync configuration (.github/workflows/sync-argocd.yml)
 - [ ] Rollback mechanisms
 - [ ] Deployment notifications
 
