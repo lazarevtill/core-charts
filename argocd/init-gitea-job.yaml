@@ -29,27 +29,21 @@ data:
     # Create admin user
     wget --post-data='{"username":"argocd","password":"argocd-password","email":"argocd@local","must_change_password":false,"send_notify":false}' \
       --header='Content-Type: application/json' \
-      -O- \
+      -q -O- \
       http://gitea.argocd.svc.cluster.local:3000/api/v1/admin/users 2>&1 || echo "✓ User already exists"
     
     echo ""
     echo "Creating core-charts repository..."
     
-    # Create repository using basic auth
+    # Create repository - embed credentials in URL for BusyBox wget compatibility
     wget --post-data='{"name":"core-charts","private":false,"auto_init":false,"default_branch":"main"}' \
       --header='Content-Type: application/json' \
-      --http-user=argocd \
-      --http-password=argocd-password \
-      -O- \
-      http://gitea.argocd.svc.cluster.local:3000/api/v1/user/repos 2>&1 || echo "✓ Repository already exists"
+      -q -O- \
+      http://argocd:argocd-password@gitea.argocd.svc.cluster.local:3000/api/v1/user/repos 2>&1 || echo "✓ Repository already exists"
     
     echo ""
     echo "✅ Gitea initialization complete"
     echo "Repository URL: http://gitea.argocd.svc.cluster.local:3000/argocd/core-charts.git"
-    echo ""
-    echo "NOTE: Repository is empty. Use port-forward to push from host:"
-    echo "  kubectl port-forward -n argocd svc/gitea 3000:3000 &"
-    echo "  git push http://argocd:argocd-password@localhost:3000/argocd/core-charts.git main --force"
 ---
 apiVersion: batch/v1
 kind: Job
