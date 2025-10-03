@@ -24,6 +24,11 @@ spec:
                   resources:
                     requests:
                       storage: 20Gi
+            hostNetwork: false
+            podMetadata:
+              labels:
+                app: prometheus
+                environment: prod
         grafana:
           enabled: false
         alertmanager:
@@ -32,8 +37,10 @@ spec:
           enabled: true
         nodeExporter:
           enabled: true
+          hostNetwork: false
         prometheusOperator:
           enabled: true
+          hostNetwork: false
   destination:
     server: https://kubernetes.default.svc
     namespace: prod-infra
