@@ -62,8 +62,7 @@ ingress:
   className: traefik
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    traefik.ingress.kubernetes.io/redirect-entry-point: https
-    traefik.ingress.kubernetes.io/redirect-permanent: "true"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
   hosts:
     - host: core-pipeline.dev.theedgestory.org
       paths:
