@@ -1,12 +1,120 @@
 # Core Infrastructure - Production Kubernetes Setup
 
-**Status**: 🟢 Production Ready
+**Status**: 🟡 Under Active Development
 **TLS Certificates**: ✅ All Valid (Let's Encrypt)
+**Production Readiness**: 🔨 In Progress (see checklist below)
 **Last Updated**: October 2025
 
 ## 🎯 Overview
 
 Production Kubernetes infrastructure for microservices deployment with monitoring and observability. Deployed on K3s with separate dev/prod environments.
+
+## ✅ Production Readiness Checklist
+
+This repository is being transformed into a production-ready, shareable infrastructure template. Track progress below:
+
+### 🔐 Security & Secrets Management
+- [ ] **Remove all secrets from repository**
+  - [ ] Audit repository for hardcoded credentials
+  - [ ] Remove GitHub PAT tokens
+  - [ ] Remove database passwords
+  - [ ] Remove Redis passwords
+  - [ ] Remove API keys
+  - [ ] Update .gitignore to prevent future secret commits
+- [ ] **Implement secure secret injection**
+  - [ ] Create bootstrap script that accepts secrets via stdin
+  - [ ] Document required secrets format (JSON/YAML schema)
+  - [ ] Add secret validation in bootstrap script
+  - [ ] Provide example secrets template (with placeholders)
+- [ ] **Per-service credential isolation**
+  - [ ] Implement PostgreSQL user generation per service (core_dev_user, core_prod_user)
+  - [ ] Implement Redis ACL user generation per service
+  - [ ] Auto-generate unique passwords per service
+  - [ ] Document credential isolation architecture
+
+### 🏗️ Infrastructure & Reliability
+- [ ] **Fix HTTP to HTTPS redirects**
+  - [x] Configure ingress annotations
+  - [ ] Apply Traefik global redirect configuration (requires server access)
+  - [ ] Verify all HTTP endpoints redirect to HTTPS with 301
+- [ ] **Resolve known infrastructure issues**
+  - [ ] Fix PostgreSQL init job timeouts
+  - [ ] Fix Helm timeout issues (or document as expected behavior)
+  - [ ] Handle concurrent Helm operations gracefully
+  - [ ] Close unused firewall port 3001
+- [ ] **High availability configuration**
+  - [ ] Document autoscaling policies
+  - [ ] Configure pod disruption budgets
+  - [ ] Set up resource quotas per namespace
+  - [ ] Configure network policies for isolation
+
+### 🚀 CI/CD & Automation
+- [ ] **GitHub Actions pipeline**
+  - [ ] Helm chart linting (helm lint)
+  - [ ] YAML validation
+  - [ ] Secret scanning (prevent commits with secrets)
+  - [ ] Dry-run deployments
+  - [ ] Automated testing on PR
+- [ ] **Deployment automation**
+  - [ ] Document webhook setup process
+  - [ ] Add webhook secret rotation procedure
+  - [ ] Implement deployment rollback strategy
+  - [ ] Add smoke tests post-deployment
+
+### 📊 Observability & Monitoring
+- [ ] **Grafana dashboards**
+  - [ ] Add Kubernetes cluster overview dashboard
+  - [ ] Add application metrics dashboard
+  - [ ] Add database performance dashboard
+  - [ ] Add Kafka metrics dashboard
+  - [ ] Export dashboards as JSON to repository
+- [ ] **Alerting rules**
+  - [ ] Define critical alerts (pod crash loops, high error rates)
+  - [ ] Define warning alerts (high CPU, memory)
+  - [ ] Configure AlertManager routing
+  - [ ] Document on-call procedures
+
+### 📖 Documentation & Developer Experience
+- [ ] **Comprehensive README**
+  - [x] Add production readiness checklist
+  - [ ] Document clean machine setup (zero to running)
+  - [ ] Add troubleshooting runbook
+  - [ ] Document disaster recovery procedures
+  - [ ] Add architecture diagrams
+- [ ] **Repository organization**
+  - [ ] Clean up unused files and scripts
+  - [ ] Organize charts into logical directories
+  - [ ] Add CHANGELOG.md
+  - [ ] Add CONTRIBUTING.md
+  - [ ] License file (if open source)
+
+### 🧪 Testing & Validation
+- [ ] **Clean machine deployment test**
+  - [ ] Provision fresh K3s cluster
+  - [ ] Run bootstrap script with test secrets
+  - [ ] Verify all services start successfully
+  - [ ] Run end-to-end smoke tests
+  - [ ] Document deployment time and resource usage
+- [ ] **Upgrade testing**
+  - [ ] Test helm upgrade path
+  - [ ] Test database migration procedures
+  - [ ] Test zero-downtime deployments
+  - [ ] Document rollback procedures
+
+### 🎯 Production Criteria (Exit Checklist)
+- [ ] No secrets in repository ✅
+- [ ] Bootstrap script works on clean machine ✅
+- [ ] All HTTP endpoints redirect to HTTPS ✅
+- [ ] All services have health checks ✅
+- [ ] CI/CD pipeline prevents bad deployments ✅
+- [ ] Grafana dashboards available ✅
+- [ ] Documentation is complete and tested ✅
+- [ ] One successful clean machine deployment ✅
+
+**Target Completion**: TBD
+**Last Updated**: October 3, 2025
+
+---
 
 ## 📋 Current Infrastructure
 
