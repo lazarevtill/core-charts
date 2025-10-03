@@ -14,23 +14,23 @@ Production Kubernetes infrastructure for microservices deployment with monitorin
 This repository is being transformed into a production-ready, shareable infrastructure template. Track progress below:
 
 ### 🔐 Security & Secrets Management
-- [ ] **Remove all secrets from repository**
-  - [ ] Audit repository for hardcoded credentials
-  - [ ] Remove GitHub PAT tokens
-  - [ ] Remove database passwords
-  - [ ] Remove Redis passwords
-  - [ ] Remove API keys
-  - [ ] Update .gitignore to prevent future secret commits
-- [ ] **Implement secure secret injection**
-  - [ ] Create bootstrap script that accepts secrets via stdin
-  - [ ] Document required secrets format (JSON/YAML schema)
-  - [ ] Add secret validation in bootstrap script
-  - [ ] Provide example secrets template (with placeholders)
-- [ ] **Per-service credential isolation**
-  - [ ] Implement PostgreSQL user generation per service (core_dev_user, core_prod_user)
-  - [ ] Implement Redis ACL user generation per service
-  - [ ] Auto-generate unique passwords per service
-  - [ ] Document credential isolation architecture
+- [x] **Remove all secrets from repository** ✅ CLEAN
+  - [x] Audit repository for hardcoded credentials (NONE FOUND)
+  - [x] Remove GitHub PAT tokens (only empty placeholders exist)
+  - [x] Remove database passwords (only empty placeholders exist)
+  - [x] Remove Redis passwords (only empty placeholders exist)
+  - [x] Remove API keys (none present)
+  - [x] Update .gitignore to prevent future secret commits
+- [x] **Implement secure secret injection**
+  - [x] Create bootstrap script that accepts secrets via stdin
+  - [x] Document required secrets format (YAML schema in secrets.example.yaml)
+  - [x] Add secret validation in bootstrap script
+  - [x] Provide example secrets template (secrets.example.yaml with comprehensive docs)
+- [x] **Per-service credential isolation** ✅ IMPLEMENTED
+  - [x] Implement PostgreSQL user generation per service (core_dev_user, core_prod_user)
+  - [x] Implement Redis ACL user generation per service (redis_dev_user, redis_prod_user)
+  - [x] Auto-generate unique passwords per service (24-32 char random alphanumeric)
+  - [x] Document credential isolation architecture in README (See Architecture section)
 
 ### 🏗️ Infrastructure & Reliability
 - [ ] **Fix HTTP to HTTPS redirects**
@@ -285,6 +285,101 @@ helm history core-pipeline-prod -n prod-core
 ```
 
 ## 🔧 Architecture
+
+### 🔐 Credential Isolation & Security
+
+This infrastructure implements **defense-in-depth** security with per-service credential isolation:
+
+#### PostgreSQL Multi-Tenancy
+```
+┌─────────────────────────────────────────────────┐
+│         PostgreSQL Admin (postgres user)        │
+│              Auto-generated password             │
+└────────────┬────────────────────────────────────┘
+             │
+      ┌──────┴──────┐
+      │             │
+┌─────▼─────┐ ┌────▼──────┐
+│  Dev DB   │ │  Prod DB  │
+│           │ │           │
+│ Database: │ │ Database: │
+│  core_dev │ │ core_prod │
+│           │ │           │
+│ User:     │ │ User:     │
+│  core_dev │ │ core_prod │
+│  _user    │ │  _user    │
+│           │ │           │
+│ Password: │ │ Password: │
+│  auto-    │ │  auto-    │
+│  gen 24ch │ │  gen 24ch │
+└───────────┘ └───────────┘
+```
+
+**Features:**
+- ✅ Separate database per environment
+- ✅ Dedicated user per service (no shared credentials)
+- ✅ Auto-generated 24-character random passwords
+- ✅ Helm post-install job creates users and grants privileges
+- ✅ Each user has full access only to their own database
+- ✅ Passwords stored as Kubernetes secrets, mounted read-only to apps
+
+#### Redis ACL Isolation
+```
+┌─────────────────────────────────────────────────┐
+│         Redis Admin (default user)              │
+│              Auto-generated password             │
+└────────────┬────────────────────────────────────┘
+             │
+      ┌──────┴──────┐
+      │             │
+┌─────▼─────┐ ┌────▼──────┐
+│ Dev ACL   │ │ Prod ACL  │
+│           │ │           │
+│ User:     │ │ User:     │
+│  redis_   │ │  redis_   │
+│  dev_user │ │ prod_user │
+│           │ │           │
+│ Password: │ │ Password: │
+│  auto-    │ │  auto-    │
+│  gen 32ch │ │  gen 32ch │
+│           │ │           │
+│ Access:   │ │ Access:   │
+│  ~* +@all │ │  ~* +@all │
+└───────────┘ └───────────┘
+```
+
+**Features:**
+- ✅ Separate ACL user per environment
+- ✅ Auto-generated 32-character random passwords
+- ✅ Helm post-install job creates ACL users
+- ✅ Full Redis command access per user (can be restricted)
+- ✅ ACL configuration persisted to disk
+- ✅ Connection URLs include username for authentication
+
+#### Secret Management Flow
+```
+1. Helm Install
+   ↓
+2. Generate Secrets (charts/*/templates/secrets.yaml)
+   - randAlphaNum(24-32) generates unique passwords
+   - Creates Kubernetes Secret per service
+   ↓
+3. Init Jobs Run (post-install hook)
+   - PostgreSQL: Create users & databases
+   - Redis: Create ACL users
+   - Read passwords from Kubernetes Secrets
+   ↓
+4. Application Deployment
+   - Secrets mounted as environment variables
+   - Apps connect using service-specific credentials
+   - No shared passwords between dev/prod
+```
+
+**Benefits:**
+- 🔒 **Blast Radius Containment**: Compromised dev credentials don't affect prod
+- 🔄 **Easy Rotation**: Secrets can be rotated per-environment independently
+- 📊 **Audit Trail**: Each environment has distinct database users for logging
+- 🚀 **Zero-Config Apps**: Applications receive credentials via environment variables
 
 ### Deployment Model
 ```
