@@ -36,5 +36,27 @@ Temporary Items
 *.tmp
 *.temp
 
+# Secrets and sensitive files
+*.secret
+*.secrets
+*.key
+*.pem
+*.crt
+*.cer
+*.p12
+*.pfx
+*-secret.yaml
+*-secrets.yaml
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
 # Note: Helm chart dependencies (.tgz and charts/) are NOT ignored
 # They must be committed for ArgoCD to work without external repo access
