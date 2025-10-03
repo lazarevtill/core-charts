@@ -10,12 +10,12 @@ data:
     
     echo "=== Initializing Gitea for ArgoCD ==="
     
-    # Wait for Gitea API to be ready
-    echo "Waiting for Gitea API..."
+    # Wait for Gitea pod to be ready
+    echo "Waiting for Gitea pod..."
     i=1
     while [ $i -le 60 ]; do
-      if wget -q --spider http://gitea.argocd.svc.cluster.local:3000 2>/dev/null; then
-        echo "✅ Gitea is ready"
+      if kubectl get pod -n argocd -l app=gitea -o jsonpath='{.items[0].status.phase}' 2>/dev/null | grep -q Running; then
+        echo "✅ Gitea pod is running"
         break
       fi
       echo "Waiting... ($i/60)"
@@ -23,27 +23,73 @@ data:
       sleep 5
     done
     
-    # Create user and repository via API (skip if exists)
-    echo "Creating Gitea admin user..."
+    # Wait for Gitea API to be ready
+    echo "Waiting for Gitea API..."
+    i=1
+    while [ $i -le 60 ]; do
+      if wget -q --spider http://gitea.argocd.svc.cluster.local:3000 2>/dev/null; then
+        echo "✅ Gitea API is ready"
+        break
+      fi
+      echo "Waiting... ($i/60)"
+      i=$((i + 1))
+      sleep 5
+    done
     
-    # Create admin user
-    wget --post-data='{"username":"argocd","password":"argocd-password","email":"argocd@local","must_change_password":false,"send_notify":false}' \
-      --header='Content-Type: application/json' \
-      -q -O- \
-      http://gitea.argocd.svc.cluster.local:3000/api/v1/admin/users 2>&1 || echo "✓ User already exists"
+    # Create admin user using Gitea CLI
+    echo "Creating Gitea admin user via CLI..."
+    kubectl exec -n argocd deployment/gitea -- \
+      gitea admin user create \
+        --username argocd \
+        --password argocd-password \
+        --email argocd@local \
+        --admin \
+        --must-change-password=false 2>&1 || echo "✓ User may already exist"
     
     echo ""
-    echo "Creating core-charts repository..."
-    
-    # Create repository - embed credentials in URL for BusyBox wget compatibility
-    wget --post-data='{"name":"core-charts","private":false,"auto_init":false,"default_branch":"main"}' \
-      --header='Content-Type: application/json' \
-      -q -O- \
-      http://argocd:argocd-password@gitea.argocd.svc.cluster.local:3000/api/v1/user/repos 2>&1 || echo "✓ Repository already exists"
+    echo "Creating core-charts repository via CLI..."
+    kubectl exec -n argocd deployment/gitea -- \
+      gitea admin repo create \
+        --owner argocd \
+        --name core-charts \
+        --private=false 2>&1 || echo "✓ Repository may already exist"
     
     echo ""
     echo "✅ Gitea initialization complete"
     echo "Repository URL: http://gitea.argocd.svc.cluster.local:3000/argocd/core-charts.git"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: gitea-init
+  namespace: argocd
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: gitea-init
+  namespace: argocd
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec"]
+    verbs: ["get", "list", "create"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: gitea-init
+  namespace: argocd
+subjects:
+  - kind: ServiceAccount
+    name: gitea-init
+    namespace: argocd
+roleRef:
+  kind: Role
+  name: gitea-init
+  apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: batch/v1
 kind: Job
@@ -54,10 +100,11 @@ spec:
   ttlSecondsAfterFinished: 300
   template:
     spec:
+      serviceAccountName: gitea-init
       restartPolicy: OnFailure
       containers:
         - name: git-init
-          image: alpine:latest
+          image: bitnami/kubectl:latest
           command: ["/bin/sh", "/scripts/init.sh"]
           volumeMounts:
             - name: init-script
