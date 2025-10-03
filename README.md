@@ -30,16 +30,11 @@ Production Kubernetes infrastructure for microservices deployment with monitorin
 - **cert-manager** - Automatic TLS certificates
 - **Traefik** - Ingress controller with LoadBalancer
 
-### 🚧 Partially Working
+### 🚧 Known Issues
 
-- **infrastructure** namespace - Redis running, PostgreSQL init job stuck
-- **Redis** - Running in infrastructure namespace but not used by apps
-
-### ❌ Failed/Not Working
-
-- **core-pipeline-dev** - Helm release shows "failed" status (pod is running though)
-- **Gitea** - Init job in ImagePullBackOff, not essential
-- **Loki** (monitoring namespace) - Helm release failed (loki-stack in same namespace works)
+- **infrastructure** namespace - Redis running, PostgreSQL init job stuck (timeouts)
+- **core-pipeline-dev** - Helm releases fail with timeout but pods run successfully
+- **infrastructure ArgoCD app** - Shows OutOfSync (uses per-env infra instead)
 
 ## 🔗 Service Endpoints
 
@@ -74,7 +69,7 @@ cd core-charts
 
 ### Daily Operations
 ```bash
-# Deploy changes
+# Deploy changes (runs automatically via webhook)
 ./deploy-hook.sh
 
 # Connect to a pod
@@ -82,6 +77,89 @@ cd core-charts
 
 # Reveal admin credentials
 ./scripts/reveal-secrets.sh
+```
+
+## 🔄 Webhook Automation
+
+### How It Works
+This repository uses GitHub webhooks for automatic deployments:
+
+```
+GitHub Push → Webhook (port 9000) → deploy-hook.sh → Helm Deploy → Kubernetes
+```
+
+**Webhook Endpoint**: `http://46.62.223.198:9000/hooks/deploy-core-charts`
+
+### Webhook Configuration (Server)
+
+The server runs a webhook listener using [webhook](https://github.com/adnanh/webhook):
+
+```bash
+# Webhook service status
+systemctl status webhook
+
+# Webhook configuration
+cat /etc/webhook.conf
+
+# View webhook logs
+journalctl -u webhook -f
+```
+
+**Configuration** (`/etc/webhook.conf`):
+```json
+[
+  {
+    "id": "deploy-core-charts",
+    "execute-command": "/root/core-charts/deploy-hook.sh",
+    "command-working-directory": "/root/core-charts",
+    "trigger-rule": {
+      "match": {
+        "type": "payload-hash-sha256",
+        "secret": "your-secret-key-here",
+        "parameter": {
+          "source": "header",
+          "name": "X-Hub-Signature-256"
+        }
+      }
+    }
+  }
+]
+```
+
+### GitHub Webhook Setup
+
+1. Go to repository Settings → Webhooks → Add webhook
+2. **Payload URL**: `http://46.62.223.198:9000/hooks/deploy-core-charts`
+3. **Content type**: `application/json`
+4. **Secret**: (matches webhook secret on server)
+5. **Events**: Just the push event
+6. **Active**: ✅ Enabled
+
+### What Happens on Push
+
+When you push to `main` branch:
+
+1. **GitHub sends webhook** to server
+2. **Webhook service verifies** signature
+3. **Runs deploy-hook.sh** which:
+   - Pulls latest code (`git pull origin main`)
+   - Builds Helm dependencies
+   - Deploys infrastructure to `infrastructure` namespace
+   - Replicates secrets to app namespaces
+   - Deploys `core-pipeline-dev` to `dev-core` namespace
+   - Deploys `core-pipeline-prod` to `prod-core` namespace
+   - Waits for rollouts to complete
+
+### Testing Webhook
+
+```bash
+# On server - trigger deployment manually
+bash /root/core-charts/deploy-hook.sh
+
+# Check recent deployments
+helm history infrastructure -n infrastructure
+helm history core-pipeline-dev -n dev-core
+helm history core-pipeline-prod -n prod-core
 ```
 
 ## 🔧 Architecture
@@ -173,14 +251,21 @@ kubectl get ingress -A
 ./scripts/reveal-secrets.sh
 ```
 
-## 📊 Current Issues
+## 📊 Server Issues & Fixes Needed
 
-| Issue | Impact | Status |
-|-------|--------|--------|
-| core-pipeline-dev Helm release marked "failed" | Low - pod is running | 🔍 Investigate |
-| infrastructure-db-init job stuck | Medium - blocks shared PostgreSQL | 🚧 In Progress |
-| Gitea init job ImagePullBackOff | Low - not essential | ⏸️ Paused |
-| Loki (monitoring) failed | Low - loki-stack works | ⏸️ Using loki-stack |
+### Critical
+- **Node.js webhook-receiver.js deleted but systemd service still references it**
+  - Service: `webhook-receiver.service` on port 3001
+  - Action needed: Stop and disable the service (we use Go webhook on port 9000)
+
+### Medium Priority
+- **infrastructure-db-init job timeouts** - PostgreSQL init job in infrastructure namespace gets stuck
+- **core-pipeline-dev repeated failures** - 10+ Helm upgrade timeouts (but pods actually run fine)
+- **Two webhook services running** - Port 3001 (broken Node.js) and port 9000 (working Go webhook)
+
+### Low Priority
+- **infrastructure ArgoCD app OutOfSync** - Not critical, using per-environment infrastructure instead
+- **Untracked files on server** - `node_modules/`, `package-lock.json`, `argocd-investigation.txt`
 
 ## 📚 Repository Structure
 

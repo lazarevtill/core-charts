@@ -199,12 +199,76 @@ dependencies:
 - Shared PostgreSQL model (using per-env instead)
 - Some monitoring namespace components (loki Helm release failed)
 
+## Webhook Automation
+
+### Architecture
+Deployments are automated via GitHub webhooks:
+
+```
+GitHub Push → Webhook (port 9000) → deploy-hook.sh → Helm → Kubernetes
+                                                         ↓
+                                                    ArgoCD tracks
+```
+
+**Server**: 46.62.223.198
+**Webhook Endpoint**: `http://46.62.223.198:9000/hooks/deploy-core-charts`
+**Service**: Go webhook binary (`/usr/bin/webhook`)
+**Config**: `/etc/webhook.conf`
+
+### Webhook Configuration
+
+```json
+{
+  "id": "deploy-core-charts",
+  "execute-command": "/root/core-charts/deploy-hook.sh",
+  "command-working-directory": "/root/core-charts",
+  "trigger-rule": {
+    "match": {
+      "type": "payload-hash-sha256",
+      "secret": "stored-in-config",
+      "parameter": {
+        "source": "header",
+        "name": "X-Hub-Signature-256"
+      }
+    }
+  }
+}
+```
+
+### How Deployments Work
+
+1. Developer pushes to `main` branch
+2. GitHub sends webhook to server
+3. Webhook service verifies signature and runs `deploy-hook.sh`
+4. Script automatically:
+   - Pulls latest code
+   - Builds Helm dependencies
+   - Deploys infrastructure (PostgreSQL, Redis)
+   - Replicates secrets to namespaces
+   - Deploys dev & prod applications
+   - Waits for rollouts
+
+### Monitoring Deployments
+
+```bash
+# On server - watch webhook logs
+journalctl -u webhook -f
+
+# Check recent deployments
+helm history infrastructure -n infrastructure
+helm history core-pipeline-dev -n dev-core
+
+# Manual deployment trigger
+cd /root/core-charts && bash deploy-hook.sh
+```
+
 ## Development Workflow
 
-1. **Make changes** to charts or configuration
-2. **Deploy** via `./deploy-hook.sh` (pulls code, builds deps, deploys Helm)
-3. **Verify** with `./health-check.sh` or check ArgoCD UI
-4. **Debug** using kubectl logs or `./scripts/connect-pod.sh`
+1. **Make changes** locally and commit to repository
+2. **Push to main** - webhook automatically triggers deployment
+3. **Monitor** via ArgoCD UI or `kubectl get pods -A`
+4. **Verify** with `./health-check.sh` or check application endpoints
+5. **Debug** using `kubectl logs` or `./scripts/connect-pod.sh`
 
 ## Security Notes
 
@@ -214,11 +278,38 @@ dependencies:
 - Admin credentials stored in Kubernetes secrets
 - Use `./scripts/reveal-secrets.sh` to view credentials
 
-## Next Steps / TODO
+## Server Issues (As of Oct 2025)
 
-1. Investigate why core-pipeline-dev Helm release shows "failed"
-2. Fix or remove infrastructure-db-init job
-3. Decide: keep per-env infra OR migrate to shared infrastructure namespace
-4. Clean up legacy dev-db/prod-db namespaces if unused
-5. Fix or remove Gitea init job
-6. Consider consolidating duplicate monitoring stacks
+### Critical - Fix Immediately
+1. **Duplicate webhook services running**
+   - Port 3001: Node.js `webhook-receiver.service` (BROKEN - file deleted)
+   - Port 9000: Go `/usr/bin/webhook` (WORKING)
+   - **Fix**: Stop and disable webhook-receiver.service
+
+### Medium Priority
+2. **infrastructure-db-init job stuck** - Timeouts when deploying PostgreSQL init
+3. **core-pipeline-dev timeouts** - Helm upgrades timeout but deployments succeed
+4. **Untracked files on server** - Clean up `node_modules/`, `package-lock.json`
+
+### Low Priority
+5. **infrastructure ArgoCD app OutOfSync** - Using per-env infrastructure instead
+6. **dev-db/prod-db namespaces** - May be legacy, verify if still used
+
+## Quick Fixes
+
+### Stop Broken Webhook Service
+```bash
+# On server
+systemctl stop webhook-receiver
+systemctl disable webhook-receiver
+rm /etc/systemd/system/webhook-receiver.service
+systemctl daemon-reload
+```
+
+### Clean Untracked Files
+```bash
+# On server
+cd /root/core-charts
+rm -rf node_modules package-lock.json argocd-investigation.txt
+git status
+```

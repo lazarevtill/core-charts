@@ -18,16 +18,6 @@ git pull origin main
 echo "✅ Code updated to latest commit: $(git rev-parse --short HEAD)"
 echo ""
 
-# 1.5. Mirror to local Gitea for ArgoCD visualization
-echo "=== 1.5. Mirror repository to local Gitea for ArgoCD ==="
-if [ -f "$SCRIPT_DIR/argocd/sync-to-gitea.sh" ]; then
-  "$SCRIPT_DIR/argocd/sync-to-gitea.sh" "$SCRIPT_DIR" &
-  echo "✅ Gitea sync triggered in background"
-else
-  echo "⚠️  Gitea sync script not found, skipping"
-fi
-echo ""
-
 # 2. Build Helm dependencies (vendor charts)
 echo "=== 2. Build Helm chart dependencies ==="
 echo "Building infrastructure chart dependencies..."
