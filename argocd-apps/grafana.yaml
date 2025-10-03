@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infrastructure
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    targetRevision: 8.8.2
+    chart: grafana
+    helm:
+      values: |
+        adminPassword: admin
+        ingress:
+          enabled: true
+          ingressClassName: traefik
+          annotations:
+            cert-manager.io/cluster-issuer: letsencrypt-prod
+            traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+          hosts:
+            - grafana.dev.theedgestory.org
+          tls:
+            - secretName: grafana-tls
+              hosts:
+                - grafana.dev.theedgestory.org
+        datasources:
+          datasources.yaml:
+            apiVersion: 1
+            datasources:
+              - name: Prometheus-Dev
+                type: prometheus
+                url: http://prometheus-dev-kube-prome-prometheus.dev-infra:9090
+                isDefault: true
+              - name: Prometheus-Prod
+                type: prometheus
+                url: http://prometheus-prod-kube-prome-prometheus.prod-infra:9090
+              - name: Loki
+                type: loki
+                url: http://loki.monitoring:3100
+              - name: Tempo
+                type: tempo
+                url: http://tempo.monitoring:3100
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kafka-dev
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: infrastructure
+  source:
+    repoURL: https://github.com/uz0/core-charts.git
+    targetRevision: main
+    path: charts/infrastructure/kafka
+    helm:
+      values: |
+        replicaCount: 3
+        auth:
+          clientProtocol: sasl
+          sasl:
+            enabled: false
+        zookeeper:
+          replicaCount: 1
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev-infra
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
