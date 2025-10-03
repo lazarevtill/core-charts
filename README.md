@@ -274,6 +274,12 @@ kubectl get ingress -A
 
 ### 🟡 Active Issues
 
+**High Priority:**
+- **HTTP to HTTPS redirects not working** - Applications return 404 on HTTP instead of redirecting to HTTPS
+  - Root cause: Traefik needs global redirect configuration
+  - HTTPS endpoints work correctly
+  - Requires server-side Traefik configuration (see Quick Fixes below)
+
 **Medium Priority:**
 - **infrastructure-db-init job timeouts** - PostgreSQL init job occasionally gets stuck
 - **core-pipeline-dev Helm timeouts** - Helm upgrades timeout but deployments succeed
@@ -284,6 +290,43 @@ kubectl get ingress -A
 - **Port 3001 still open in firewall** - Should be closed (only need port 9000)
 
 ### Quick Fixes
+
+**Configure Traefik global HTTP to HTTPS redirect:**
+```bash
+# SSH to server
+ssh -i ~/.ssh/hetzner root@46.62.223.198
+
+# Check current Traefik configuration
+kubectl get deployment traefik -n kube-system -o yaml | grep -A 50 "args:"
+
+# Option 1: Patch Traefik deployment to add redirect
+kubectl patch deployment traefik -n kube-system --type=json -p='[
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/args/-",
+    "value": "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+  },
+  {
+    "op": "add",
+    "path": "/spec/template/spec/containers/0/args/-",
+    "value": "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+  }
+]'
+
+# Option 2: If Traefik installed via Helm, update values
+helm get values traefik -n kube-system > traefik-values.yaml
+# Edit traefik-values.yaml to add:
+# ports:
+#   web:
+#     redirectTo:
+#       port: websecure
+helm upgrade traefik traefik/traefik -n kube-system -f traefik-values.yaml
+
+# Verify redirect is working
+curl -I http://core-pipeline.dev.theedgestory.org 2>&1 | grep -E "HTTP|Location"
+# Should see: HTTP/1.1 301 Moved Permanently
+# Location: https://core-pipeline.dev.theedgestory.org/
+```
 
 **Close unused firewall port:**
 ```bash
