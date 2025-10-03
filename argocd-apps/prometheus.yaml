@@ -13,10 +13,21 @@ spec:
     chart: kube-prometheus-stack
     helm:
       values: |
+        nameOverride: prom
         fullnameOverride: prom
         prometheus:
+          service:
+            type: ClusterIP
           prometheusSpec:
             retention: 30d
+            replicas: 1
+            resources:
+              requests:
+                memory: 1Gi
+                cpu: 500m
+              limits:
+                memory: 2Gi
+                cpu: 1000m
             storageSpec:
               volumeClaimTemplate:
                 spec:
@@ -24,12 +35,16 @@ spec:
                   resources:
                     requests:
                       storage: 20Gi
-            serviceMonitorSelectorNilUsesHelmValues: false
-            podMonitorSelectorNilUsesHelmValues: false
         grafana:
           enabled: false
         alertmanager:
           enabled: false
+        kubeStateMetrics:
+          enabled: true
+        nodeExporter:
+          enabled: true
+        prometheusOperator:
+          enabled: true
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
