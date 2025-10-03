@@ -278,38 +278,45 @@ cd /root/core-charts && bash deploy-hook.sh
 - Admin credentials stored in Kubernetes secrets
 - Use `./scripts/reveal-secrets.sh` to view credentials
 
-## Server Issues (As of Oct 2025)
+## Server Status (As of Oct 2025)
 
-### Critical - Fix Immediately
-1. **Duplicate webhook services running**
-   - Port 3001: Node.js `webhook-receiver.service` (BROKEN - file deleted)
-   - Port 9000: Go `/usr/bin/webhook` (WORKING)
-   - **Fix**: Stop and disable webhook-receiver.service
+### ✅ Working
+- **Webhook service**: Go webhook on port 9000 (`/usr/bin/webhook`)
+- **Deployment automation**: GitHub push → webhook → deploy-hook.sh → Helm
+- **Server repo**: Clean, synced with origin/main
+- **Gitea**: Completely removed from cluster
 
-### Medium Priority
-2. **infrastructure-db-init job stuck** - Timeouts when deploying PostgreSQL init
-3. **core-pipeline-dev timeouts** - Helm upgrades timeout but deployments succeed
-4. **Untracked files on server** - Clean up `node_modules/`, `package-lock.json`
+### 🟡 Known Issues
 
-### Low Priority
-5. **infrastructure ArgoCD app OutOfSync** - Using per-env infrastructure instead
-6. **dev-db/prod-db namespaces** - May be legacy, verify if still used
+**Medium Priority:**
+1. **infrastructure-db-init timeouts** - PostgreSQL init job occasionally stuck
+2. **core-pipeline-dev Helm timeouts** - Upgrades timeout but pods deploy successfully
+3. **Concurrent Helm operations** - "another operation is in progress" errors
+4. **Port 3001 firewall rule** - Still open but unused (should be closed)
 
-## Quick Fixes
+**Low Priority:**
+5. **infrastructure ArgoCD app OutOfSync** - Expected, using per-env infrastructure
+6. **dev-db/prod-db namespaces** - May be legacy, verify usage
 
-### Stop Broken Webhook Service
+### Quick Fixes
+
+**Close unused port:**
 ```bash
-# On server
-systemctl stop webhook-receiver
-systemctl disable webhook-receiver
-rm /etc/systemd/system/webhook-receiver.service
-systemctl daemon-reload
+ufw delete allow 3001/tcp
 ```
 
-### Clean Untracked Files
+**Fix stuck Helm operations:**
 ```bash
-# On server
+# List pending releases
+helm list --pending -A
+
+# Kill stuck release
+helm rollback <release> -n <namespace>
+```
+
+**Clean server repo:**
+```bash
 cd /root/core-charts
-rm -rf node_modules package-lock.json argocd-investigation.txt
 git status
+git clean -fd  # Remove untracked files
 ```

@@ -128,12 +128,26 @@ journalctl -u webhook -f
 
 ### GitHub Webhook Setup
 
-1. Go to repository Settings → Webhooks → Add webhook
+**Current Status**: ✅ Webhook is configured and working
+
+1. Repository Settings → Webhooks → Add webhook
 2. **Payload URL**: `http://46.62.223.198:9000/hooks/deploy-core-charts`
 3. **Content type**: `application/json`
-4. **Secret**: (matches webhook secret on server)
+4. **Secret**: `your-secret-key-here` (stored in `/etc/webhook.conf`)
 5. **Events**: Just the push event
 6. **Active**: ✅ Enabled
+
+**Verification on Server:**
+```bash
+# Check webhook service status
+systemctl status webhook
+
+# Monitor webhook activity in real-time
+journalctl -u webhook -f
+
+# View webhook config
+cat /etc/webhook.conf
+```
 
 ### What Happens on Push
 
@@ -251,21 +265,39 @@ kubectl get ingress -A
 ./scripts/reveal-secrets.sh
 ```
 
-## 📊 Server Issues & Fixes Needed
+## 📊 Server Status & Known Issues
 
-### Critical
-- **Node.js webhook-receiver.js deleted but systemd service still references it**
-  - Service: `webhook-receiver.service` on port 3001
-  - Action needed: Stop and disable the service (we use Go webhook on port 9000)
+### ✅ Fixed
+- ~~Duplicate webhook services~~ - Removed broken Node.js service, only Go webhook on port 9000
+- ~~Git merge conflicts~~ - Server repo reset to origin/main
+- ~~Gitea resources~~ - All cleaned up from cluster
 
-### Medium Priority
-- **infrastructure-db-init job timeouts** - PostgreSQL init job in infrastructure namespace gets stuck
-- **core-pipeline-dev repeated failures** - 10+ Helm upgrade timeouts (but pods actually run fine)
-- **Two webhook services running** - Port 3001 (broken Node.js) and port 9000 (working Go webhook)
+### 🟡 Active Issues
 
-### Low Priority
-- **infrastructure ArgoCD app OutOfSync** - Not critical, using per-environment infrastructure instead
-- **Untracked files on server** - `node_modules/`, `package-lock.json`, `argocd-investigation.txt`
+**Medium Priority:**
+- **infrastructure-db-init job timeouts** - PostgreSQL init job occasionally gets stuck
+- **core-pipeline-dev Helm timeouts** - Helm upgrades timeout but deployments succeed
+- **Concurrent Helm operations** - Error: "another operation is in progress" when multiple deployments overlap
+
+**Low Priority:**
+- **infrastructure ArgoCD app OutOfSync** - Using per-env infrastructure, not critical
+- **Port 3001 still open in firewall** - Should be closed (only need port 9000)
+
+### Quick Fixes
+
+**Close unused firewall port:**
+```bash
+ufw delete allow 3001/tcp
+```
+
+**Fix stuck Helm operations:**
+```bash
+# If deployment stuck, check pending releases
+helm list --pending -A
+
+# Rollback stuck release
+helm rollback <release-name> -n <namespace>
+```
 
 ## 📚 Repository Structure
 
