@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: prometheus-prod
+  name: prometheus
   namespace: argocd
   finalizers:
     - resources-finalizer.argocd.argoproj.io
@@ -13,7 +13,7 @@ spec:
     chart: kube-prometheus-stack
     helm:
       values: |
-        fullnameOverride: prometheus-prod
+        fullnameOverride: prom
         prometheus:
           prometheusSpec:
             retention: 30d
@@ -24,26 +24,15 @@ spec:
                   resources:
                     requests:
                       storage: 20Gi
-            hostNetwork: false
-            podMetadata:
-              labels:
-                app: prometheus
-                environment: prod
+            serviceMonitorSelectorNilUsesHelmValues: false
+            podMonitorSelectorNilUsesHelmValues: false
         grafana:
           enabled: false
         alertmanager:
           enabled: false
-        kubeStateMetrics:
-          enabled: true
-        nodeExporter:
-          enabled: true
-          hostNetwork: false
-        prometheusOperator:
-          enabled: true
-          hostNetwork: false
   destination:
     server: https://kubernetes.default.svc
-    namespace: prod-infra
+    namespace: monitoring
   syncPolicy:
     automated:
       prune: false

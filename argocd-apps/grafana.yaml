@@ -30,19 +30,16 @@ spec:
           datasources.yaml:
             apiVersion: 1
             datasources:
-              - name: Prometheus-Dev
+              - name: Prometheus
                 type: prometheus
-                url: http://prometheus-dev-prometheus.dev-infra:9090
+                url: http://prom-prometheus.monitoring:9090
                 isDefault: true
-              - name: Prometheus-Prod
-                type: prometheus
-                url: http://prometheus-prod-prometheus.prod-infra:9090
               - name: Loki
                 type: loki
                 url: http://loki.monitoring:3100
               - name: Tempo
                 type: tempo
-                url: http://tempo.monitoring:3100
+                url: http://tempo-query-frontend.monitoring:3100
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
