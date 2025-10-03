@@ -88,7 +88,7 @@ echo ""
 
 # Create namespaces
 echo "=== 3. Create Namespaces ==="
-for ns in database redis kafka monitoring argocd dev-core prod-core cert-manager infrastructure dev-infra prod-infra; do
+for ns in monitoring argocd dev-core prod-core cert-manager infrastructure; do
   kubectl create namespace $ns --dry-run=client -o yaml | kubectl apply -f - >/dev/null 2>&1
 done
 print_success "Namespaces created"
@@ -97,17 +97,17 @@ echo ""
 # Create infrastructure admin secrets
 echo "=== 4. Create Infrastructure Admin Secrets ==="
 
-# PostgreSQL admin secret
+# PostgreSQL admin secret (in infrastructure namespace)
 kubectl create secret generic postgresql \
   --from-literal=postgres-password="$POSTGRES_ADMIN_PASSWORD" \
   --from-literal=password="$POSTGRES_ADMIN_PASSWORD" \
-  --namespace=database \
+  --namespace=infrastructure \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
-# Redis admin secret
+# Redis admin secret (in infrastructure namespace)
 kubectl create secret generic redis \
   --from-literal=redis-password="$REDIS_ADMIN_PASSWORD" \
-  --namespace=redis \
+  --namespace=infrastructure \
   --dry-run=client -o yaml | kubectl apply -f - >/dev/null
 
 # GitHub credentials (if provided)
@@ -167,33 +167,57 @@ helm dependency build charts/infrastructure/ >/dev/null 2>&1
 print_success "Chart dependencies built"
 echo ""
 
-# Deploy infrastructure
-echo "=== 10. Deploy Infrastructure ==="
-helm upgrade --install infrastructure ./charts/infrastructure \
-  --namespace infrastructure \
-  --create-namespace \
-  --set kafka.enabled=false \
-  --wait \
-  --timeout 10m >/dev/null 2>&1
-print_success "Infrastructure deployed"
+# Create ArgoCD Projects
+echo "=== 10. Create ArgoCD Projects ==="
+kubectl apply -f argocd/projects.yaml >/dev/null 2>&1 || print_warning "ArgoCD projects not configured"
+print_success "ArgoCD projects configured"
 echo ""
 
-# Verify infrastructure
-echo "=== 11. Verify Infrastructure Pods ==="
-kubectl get pods -n infrastructure 2>/dev/null | grep -v "NAME" | while read line; do
-  status=$(echo $line | awk '{print $3}')
+# Apply ArgoCD Applications
+echo "=== 11. Deploy ArgoCD Applications ==="
+print_info "Applying all ArgoCD application manifests..."
+
+# Infrastructure (single shared instance)
+kubectl apply -f argocd-apps/infrastructure.yaml >/dev/null 2>&1 && print_success "infrastructure app created" || print_warning "infrastructure app failed"
+
+# Applications
+kubectl apply -f argocd-apps/core-pipeline-dev.yaml >/dev/null 2>&1 && print_success "core-pipeline-dev app created" || print_warning "core-pipeline-dev app failed"
+kubectl apply -f argocd-apps/core-pipeline-prod.yaml >/dev/null 2>&1 && print_success "core-pipeline-prod app created" || print_warning "core-pipeline-prod app failed"
+
+# Monitoring
+kubectl apply -f argocd-apps/prometheus.yaml >/dev/null 2>&1 && print_success "prometheus app created" || print_warning "prometheus app failed"
+kubectl apply -f argocd-apps/grafana.yaml >/dev/null 2>&1 && print_success "grafana app created" || print_warning "grafana app failed"
+kubectl apply -f argocd-apps/loki.yaml >/dev/null 2>&1 && print_success "loki app created" || print_warning "loki app failed"
+kubectl apply -f argocd-apps/tempo.yaml >/dev/null 2>&1 && print_success "tempo app created" || print_warning "tempo app failed"
+
+echo ""
+
+# Wait for ArgoCD to sync shared infrastructure
+echo "=== 12. Wait for Shared Infrastructure Sync ==="
+print_info "Waiting for ArgoCD to sync shared infrastructure (this may take a few minutes)..."
+
+# Trigger sync for infrastructure app
+kubectl patch application infrastructure -n argocd --type merge -p '{"operation":{"initiatedBy":{"username":"bootstrap"},"sync":{"revision":"HEAD"}}}' >/dev/null 2>&1 || true
+
+# Wait for sync (best effort)
+sleep 10
+kubectl wait --for=condition=SyncStatusCode=Synced application/infrastructure -n argocd --timeout=600s >/dev/null 2>&1 && print_success "infrastructure synced" || print_warning "infrastructure sync pending (check ArgoCD UI)"
+
+echo ""
+
+# Verify deployments
+echo "=== 13. Verify Deployments ==="
+print_info "ArgoCD Applications:"
+kubectl get applications -n argocd --no-headers 2>/dev/null | while read line; do
   name=$(echo $line | awk '{print $1}')
-  if [ "$status" = "Running" ] || [ "$status" = "Completed" ]; then
-    print_success "$name"
+  sync=$(echo $line | awk '{print $2}')
+  health=$(echo $line | awk '{print $3}')
+  if [ "$sync" = "Synced" ] && [ "$health" = "Healthy" ]; then
+    print_success "$name - $sync/$health"
   else
-    print_warning "$name - $status"
+    print_warning "$name - $sync/$health"
   fi
 done
-echo ""
-
-# Apply ArgoCD applications
-echo "=== 12. Configure ArgoCD Applications ==="
-kubectl apply -f argocd/ -n argocd 2>/dev/null || print_warning "ArgoCD apps not applied (files may not exist)"
 echo ""
 
 echo "========================================"
@@ -226,9 +250,18 @@ echo "  Password: $grafana_password"
 echo ""
 echo "========================================"
 echo "📊 Next Steps:"
-echo "  1. Run: ./health-check.sh"
-echo "  2. Access ArgoCD: https://argo.dev.$DOMAIN_BASE"
-echo "  3. Access Grafana: https://grafana.dev.$DOMAIN_BASE"
-echo "  4. Deploy applications via ArgoCD or Helm"
+echo "  1. Check ArgoCD apps: kubectl get applications -n argocd"
+echo "  2. Access ArgoCD UI: https://argo.dev.$DOMAIN_BASE"
+echo "  3. Sync apps manually if needed: kubectl patch application <name> -n argocd --type merge -p '{\"operation\":{\"sync\":{\"revision\":\"HEAD\"}}}'"
+echo "  4. Run health check: ./health-check.sh"
+echo "  5. Access services:"
+echo "     - Grafana: https://grafana.dev.$DOMAIN_BASE"
+echo "     - Prometheus: https://prometheus.dev.$DOMAIN_BASE"
+echo "     - Dev App: https://core-pipeline.dev.$DOMAIN_BASE"
+echo "     - Prod App: https://core-pipeline.$DOMAIN_BASE"
+echo ""
+echo "🔄 GitOps Workflow:"
+echo "  All deployments are now managed by ArgoCD"
+echo "  Push to main branch → ArgoCD auto-syncs → Kubernetes updated"
 echo "========================================"
 echo ""

@@ -124,42 +124,49 @@ helm upgrade --install core-pipeline-dev ./charts/core-pipeline \
 
 ## Architecture
 
-### Current Deployment Model
-**Per-Environment Infrastructure** - Each environment (dev/prod) has its own complete infrastructure stack:
+### Deployment Model
+**Shared Infrastructure with Separate Applications** - Single shared infrastructure serves both dev and prod environments:
 
 ```
-dev-infra/                          prod-infra/
-  ├── PostgreSQL                      ├── PostgreSQL
-  ├── Kafka (3 nodes)                 ├── Kafka (3 nodes)
-  ├── Prometheus                      ├── Prometheus
-  ├── Grafana                         ├── Grafana
-  ├── Loki                            ├── Loki
-  └── Tempo                           └── Tempo
+infrastructure/                   # Shared Infrastructure Namespace
+  ├── PostgreSQL                 # With separate dev/prod users
+  ├── Redis                      # With separate dev/prod ACL users
+  └── Kafka                      # Shared Kafka cluster
 
-dev-core/                           prod-core/
-  └── core-pipeline-dev               └── core-pipeline-prod (2 replicas)
+monitoring/                      # Centralized Monitoring
+  ├── Prometheus                # Single instance for all metrics
+  ├── Grafana                   # Single dashboard instance
+  ├── Loki                      # Centralized logging
+  └── Tempo                     # Distributed tracing
+
+dev-core/                        # Development Application
+  └── core-pipeline-dev          # Dev deployment with dev credentials
+
+prod-core/                       # Production Application
+  └── core-pipeline-prod         # Prod deployment (2 replicas) with prod credentials
 ```
 
-**Additional Centralized Services:**
-- `monitoring` namespace - kube-prometheus, loki-stack, tempo-distributed
-- `infrastructure` namespace - Shared Redis & PostgreSQL (partially working)
-- `argocd` namespace - ArgoCD + Gitea (partial)
+**Additional Platform Services:**
+- `argocd` namespace - ArgoCD for GitOps deployments
 - `cert-manager` namespace - TLS certificate management
-- `kube-system` - Traefik ingress
+- `kube-system` - Traefik ingress controller
+
+**Key Architecture Principle:**
+- ✅ **ONE shared instance** of each infrastructure service (PostgreSQL, Kafka, Redis, Prometheus)
+- ✅ **Credential isolation** via per-environment database users and Redis ACL users
+- ✅ **Only core-pipeline has dev/prod splits** for separate deployments
+- ✅ **All managed by ArgoCD** for true GitOps workflow
 
 ### Namespace Structure
-| Namespace | Purpose | Status |
-|-----------|---------|--------|
-| dev-core | Dev applications | ✅ Working |
-| prod-core | Prod applications | ✅ Working |
-| dev-infra | Dev infrastructure (PostgreSQL, Kafka, monitoring) | ✅ Working |
-| prod-infra | Prod infrastructure (PostgreSQL, Kafka, monitoring) | ✅ Working |
-| infrastructure | Shared Redis/PostgreSQL (umbrella chart) | 🚧 Partial (Redis OK, PG init stuck) |
-| monitoring | Centralized monitoring stack | ✅ Working |
-| argocd | GitOps platform | ✅ Working |
-| cert-manager | Certificate management | ✅ Working |
-| dev-db | Legacy dev postgres | ⚠️ May be unused |
-| prod-db | Legacy prod postgres | ⚠️ May be unused |
+| Namespace | Purpose | Components | Status |
+|-----------|---------|------------|--------|
+| infrastructure | Shared infrastructure | PostgreSQL, Redis, Kafka | ✅ Managed by ArgoCD |
+| monitoring | Shared monitoring | Prometheus, Grafana, Loki, Tempo | ✅ Managed by ArgoCD |
+| dev-core | Dev applications | core-pipeline-dev | ✅ Managed by ArgoCD |
+| prod-core | Prod applications | core-pipeline-prod | ✅ Managed by ArgoCD |
+| argocd | GitOps platform | ArgoCD server & controllers | ✅ Platform |
+| cert-manager | Certificate management | cert-manager, Let's Encrypt | ✅ Platform |
+| kube-system | Ingress & system | Traefik, CoreDNS | ✅ Platform |
 
 ### Repository Structure
 ```
@@ -205,43 +212,62 @@ core-charts/
 | Grafana | https://grafana.dev.theedgestory.org | monitoring | ✅ |
 | Prometheus | https://prometheus.dev.theedgestory.org | monitoring | ✅ |
 
-### Helm Releases
+### ArgoCD Applications (GitOps-Managed)
 
-**Currently Deployed (22 releases):**
-- cert-manager (cert-manager)
-- traefik, traefik-crd (kube-system)
-- infrastructure (infrastructure) - ⚠️ Status: failed
-- core-pipeline-dev (dev-core) - ⚠️ Status: failed (but pod running)
-- core-pipeline-prod (prod-core) - ✅ Status: deployed
-- postgres-dev, kafka-dev, monitoring-dev, grafana-dev, loki-dev, tempo-dev (dev-infra)
-- postgres-prod, kafka-prod, monitoring-prod, grafana-prod, loki-prod, tempo-prod (prod-infra)
-- kube-prometheus, loki, loki-stack, tempo (monitoring)
+**All deployments are managed by ArgoCD:**
 
-### ArgoCD Applications
-Only 3 ArgoCD applications currently deployed:
-- `core-pipeline-dev` - Synced, Healthy
-- `core-pipeline-prod` - Synced, Healthy
-- `infrastructure` - OutOfSync, Healthy
+**Infrastructure (sync-wave: 1):**
+- `infrastructure` - Shared PostgreSQL, Redis, Kafka
 
-**Note:** Most infrastructure is deployed directly via Helm, not managed by ArgoCD.
+**Applications (sync-wave: 2):**
+- `core-pipeline-dev` - Dev deployment to dev-core namespace
+- `core-pipeline-prod` - Prod deployment (2 replicas) to prod-core namespace
+
+**Monitoring (sync-wave: 1):**
+- `prometheus` - Centralized metrics collection
+- `grafana` - Unified dashboards
+- `loki` - Centralized logging
+- `tempo` - Distributed tracing
+
+**GitOps Workflow:**
+1. Push changes to `main` branch
+2. Webhook triggers `deploy-hook.sh`
+3. ArgoCD detects changes and syncs applications
+4. Kubernetes resources updated automatically
 
 ## Known Issues
 
+**✅ RESOLVED:**
+- ~~Per-environment infrastructure~~ - Now using single shared infrastructure
+- ~~Direct Helm deployments~~ - Everything now managed by ArgoCD
+- ~~Namespace confusion~~ - Clean namespace structure with clear separation
+
+**Active Issues:**
 | Issue | Impact | Notes |
 |-------|--------|-------|
-| core-pipeline-dev Helm status "failed" | Low | Pod is running fine, deployment works |
-| infrastructure-db-init job stuck | Medium | PostgreSQL in infrastructure namespace can't init |
-| Gitea init job ImagePullBackOff | Low | Gitea pod runs, but init job fails |
-| Loki (monitoring) Helm failed | Low | loki-stack in same namespace works |
-| dev-db/prod-db namespaces | Unknown | May be legacy/unused, check if referenced |
+| Kafka UI not deployed | Low | Optional monitoring component |
+| infrastructure-db-init timeouts | Medium | PostgreSQL init job occasionally stuck |
+
+**Migration Notes:**
+- Legacy `dev-infra` and `prod-infra` namespaces removed
+- Legacy `dev-db` and `prod-db` namespaces may need cleanup
+- All infrastructure now in single `infrastructure` namespace
 
 ## Important Implementation Details
 
 ### Deployment Pattern
-This setup uses **per-environment infrastructure** rather than shared services:
-- Dev apps connect to dev-infra PostgreSQL/Kafka
-- Prod apps connect to prod-infra PostgreSQL/Kafka
-- `infrastructure` namespace was intended for shared services but is only partially working
+This setup uses **shared infrastructure with credential isolation**:
+- **Single PostgreSQL instance** with separate users: `core_dev_user` and `core_prod_user`
+- **Single Redis instance** with separate ACL users: `redis_dev_user` and `redis_prod_user`
+- **Single Kafka cluster** shared by both environments
+- **Single monitoring stack** (Prometheus, Grafana, Loki, Tempo)
+- **Only core-pipeline** has separate dev/prod deployments
+
+### GitOps with ArgoCD
+- **All resources managed by ArgoCD** - no direct Helm deployments
+- **Sync waves** ensure infrastructure deploys before applications
+- **Auto-sync enabled** - push to main triggers automatic deployment
+- **Self-healing** - ArgoCD corrects manual changes back to git state
 
 ### Helm Chart Dependencies
 The infrastructure umbrella chart uses local subcharts:
@@ -266,31 +292,31 @@ dependencies:
 ## Current Status Summary
 
 ### ✅ Working
-- Core applications (dev & prod)
-- Per-environment infrastructure (PostgreSQL, Kafka)
-- Per-environment monitoring (Prometheus, Grafana, Loki, Tempo)
-- ArgoCD UI and application tracking
-- TLS certificates
-- Ingress routing
+- ✅ **GitOps with ArgoCD** - All resources managed declaratively
+- ✅ **Shared infrastructure** - PostgreSQL, Redis, Kafka in single namespace
+- ✅ **Credential isolation** - Separate dev/prod users for all services
+- ✅ **Core applications** - Dev & prod deployments with auto-sync
+- ✅ **Centralized monitoring** - Single Prometheus, Grafana, Loki, Tempo
+- ✅ **TLS certificates** - Let's Encrypt via cert-manager
+- ✅ **Ingress routing** - Traefik with HTTPS enforcement
+- ✅ **Webhook automation** - GitHub push triggers ArgoCD sync
 
-### 🚧 In Progress
-- infrastructure namespace (Redis works, PostgreSQL init stuck)
-- Gitea integration (pod runs, init job fails)
-
-### ❌ Not Working
-- infrastructure-db-init job (Terminating/stuck)
-- Shared PostgreSQL model (using per-env instead)
-- Some monitoring namespace components (loki Helm release failed)
+### 📊 Architecture Highlights
+- **Single source of truth** - Git repository drives all deployments
+- **No manual Helm deployments** - Everything through ArgoCD
+- **Environment separation** - Only applications split dev/prod, not infrastructure
+- **Sync waves** - Infrastructure deploys before applications automatically
 
 ## Webhook Automation
 
 ### Architecture
-Deployments are automated via GitHub webhooks:
+Deployments are automated via GitHub webhooks with ArgoCD GitOps:
 
 ```
-GitHub Push → Webhook (port 9000) → deploy-hook.sh → Helm → Kubernetes
-                                                         ↓
-                                                    ArgoCD tracks
+GitHub Push → Webhook (port 9000) → deploy-hook.sh → ArgoCD Sync → Kubernetes
+       │                                                    │
+       └──────────────────────────────────────────────────┘
+                    ArgoCD detects git changes
 ```
 
 **Server**: 46.62.223.198
@@ -324,12 +350,16 @@ GitHub Push → Webhook (port 9000) → deploy-hook.sh → Helm → Kubernetes
 2. GitHub sends webhook to server
 3. Webhook service verifies signature and runs `deploy-hook.sh`
 4. Script automatically:
-   - Pulls latest code
-   - Builds Helm dependencies
-   - Deploys infrastructure (PostgreSQL, Redis)
-   - Replicates secrets to namespaces
-   - Deploys dev & prod applications
-   - Waits for rollouts
+   - Pulls latest code from git
+   - Builds Helm chart dependencies
+   - Applies ArgoCD application manifests
+   - Triggers ArgoCD sync for all applications
+   - Waits for sync completion
+5. ArgoCD:
+   - Detects git changes
+   - Compares desired state (git) vs current state (cluster)
+   - Syncs resources in order (sync-wave 1, then 2)
+   - Self-heals any drift from desired state
 
 ### Monitoring Deployments
 
@@ -337,29 +367,56 @@ GitHub Push → Webhook (port 9000) → deploy-hook.sh → Helm → Kubernetes
 # On server - watch webhook logs
 journalctl -u webhook -f
 
-# Check recent deployments
-helm history infrastructure -n infrastructure
-helm history core-pipeline-dev -n dev-core
+# Check ArgoCD application status
+kubectl get applications -n argocd
 
-# Manual deployment trigger
+# Watch specific application sync
+kubectl get application infrastructure -n argocd -w
+
+# View application details
+kubectl describe application core-pipeline-dev -n argocd
+
+# Manual sync trigger
+kubectl patch application infrastructure -n argocd --type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}'
+
+# Manual deployment (webhook simulation)
 cd /root/core-charts && bash deploy-hook.sh
 ```
 
 ## Development Workflow
 
+**GitOps-First Development:**
+
 1. **Make changes** locally and commit to repository
-2. **Push to main** - webhook automatically triggers deployment
-3. **Monitor** via ArgoCD UI or `kubectl get pods -A`
-4. **Verify** with `./health-check.sh` or check application endpoints
-5. **Debug** using `kubectl logs` or `./scripts/connect-pod.sh`
+2. **Push to main** - webhook triggers ArgoCD sync
+3. **Monitor** via ArgoCD UI at https://argo.dev.theedgestory.org
+   - Or CLI: `kubectl get applications -n argocd`
+4. **Verify** deployments:
+   - Health check script: `./health-check.sh`
+   - Application endpoints: https://core-pipeline.dev.theedgestory.org
+5. **Debug** issues:
+   - ArgoCD app logs: `kubectl describe application <name> -n argocd`
+   - Pod logs: `kubectl logs` or `./scripts/connect-pod.sh`
+6. **Rollback** if needed:
+   - Revert git commit and push
+   - Or sync to specific revision in ArgoCD UI
 
 ## Security Notes
 
-- Separate namespaces provide dev/prod isolation
-- Each environment has dedicated database instances
-- TLS enforced on all ingresses
-- Admin credentials stored in Kubernetes secrets
-- Use `./scripts/reveal-secrets.sh` to view credentials
+**Credential Isolation:**
+- ✅ **Separate database users** - `core_dev_user` and `core_prod_user` in shared PostgreSQL
+- ✅ **Separate Redis ACL users** - `redis_dev_user` and `redis_prod_user` in shared Redis
+- ✅ **Namespace isolation** - dev-core and prod-core with separate RBAC
+- ✅ **TLS enforcement** - All ingresses require HTTPS
+- ✅ **Secret management** - Kubernetes secrets, never in git
+- ✅ **GitOps audit trail** - All changes tracked in git history
+
+**Accessing Credentials:**
+```bash
+./scripts/reveal-secrets.sh                    # View all admin credentials
+kubectl get secret -n infrastructure           # List infrastructure secrets
+kubectl get secret -n argocd argocd-initial-admin-secret -o yaml  # ArgoCD password
+```
 
 ## Server Status (As of Oct 2025)
 

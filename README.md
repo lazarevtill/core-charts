@@ -7,7 +7,7 @@
 
 ## 🎯 Overview
 
-Production Kubernetes infrastructure for microservices deployment with monitoring and observability. Deployed on K3s with separate dev/prod environments.
+Production-ready Kubernetes infrastructure managed via **GitOps with ArgoCD**. Features shared infrastructure (PostgreSQL, Redis, Kafka, Prometheus) with credential isolation for dev/prod environments. All deployments declaratively defined in git and auto-synced to cluster.
 
 ## ✅ Production Readiness Checklist
 
@@ -492,52 +492,77 @@ This infrastructure implements **defense-in-depth** security with per-service cr
 - 🚀 **Zero-Config Apps**: Applications receive credentials via environment variables
 
 ### Deployment Model
+
+**GitOps with ArgoCD** - All deployments managed via Git:
+
 ```
-┌─────────────────────────────────────────────┐
-│          Traefik LoadBalancer               │
-│        (46.62.223.198:80,443)              │
-│          Let's Encrypt TLS                  │
-└──────────────┬──────────────────────────────┘
-               │
-       ┌───────┼───────┐
-       │               │
-  ┌────▼────┐    ┌────▼────┐
-  │ dev-*   │    │ prod-*  │
-  │ envs    │    │ envs    │
-  └─────────┘    └─────────┘
+┌──────────────────────────────────────────────────────────┐
+│                   Traefik LoadBalancer                   │
+│                 (46.62.223.198:80,443)                  │
+│                    Let's Encrypt TLS                     │
+└────────────┬─────────────────────────────────────────────┘
+             │
+      ┌──────┴──────┐
+      │  ArgoCD     │  ← GitOps Controller
+      │  (Wave 1)   │
+      └──────┬──────┘
+             │
+  ┌──────────┼──────────┐
+  │                     │
+┌─▼────────────┐  ┌────▼────────┐
+│infrastructure│  │ monitoring  │
+│  (shared)    │  │  (shared)   │
+│              │  │             │
+│ PostgreSQL   │  │ Prometheus  │
+│ Redis        │  │ Grafana     │
+│ Kafka        │  │ Loki        │
+└──────────────┘  │ Tempo       │
+                  └─────────────┘
+      │
+      │ Wave 2 (after infra ready)
+      │
+  ┌───┴───┐
+┌─▼─────┐ ┌─▼──────┐
+│dev-core│ │prod-core│
+│        │ │         │
+│pipeline│ │pipeline │
+│ (dev)  │ │ (prod)  │
+└────────┘ └─────────┘
 ```
 
 ### Namespace Structure
-- **dev-core** - Development applications
-- **prod-core** - Production applications
-- **dev-infra** - Dev infrastructure (PostgreSQL, Kafka, Grafana, Prometheus, Loki, Tempo)
-- **prod-infra** - Prod infrastructure (PostgreSQL, Kafka, Grafana, Prometheus, Loki, Tempo)
-- **dev-db** - Legacy dev postgres (may be unused)
-- **prod-db** - Legacy prod postgres (may be unused)
-- **infrastructure** - Shared Redis & PostgreSQL (partial)
-- **monitoring** - Centralized monitoring stack
-- **argocd** - GitOps platform
-- **cert-manager** - Certificate management
 
-### Helm Releases
+| Namespace | Purpose | Managed By | Components |
+|-----------|---------|------------|------------|
+| `infrastructure` | Shared infrastructure | ArgoCD | PostgreSQL, Redis, Kafka |
+| `monitoring` | Shared monitoring | ArgoCD | Prometheus, Grafana, Loki, Tempo |
+| `dev-core` | Dev applications | ArgoCD | core-pipeline-dev |
+| `prod-core` | Prod applications | ArgoCD | core-pipeline-prod (2 replicas) |
+| `argocd` | GitOps platform | Manual | ArgoCD server & controllers |
+| `cert-manager` | Certificate mgmt | Manual | cert-manager, Let's Encrypt |
+| `kube-system` | System services | K3s | Traefik, CoreDNS |
 
-**Per-Environment Pattern:**
-- `postgres-dev` / `postgres-prod` (dev-infra/prod-infra)
-- `kafka-dev` / `kafka-prod` (dev-infra/prod-infra)
-- `monitoring-dev` / `monitoring-prod` (Prometheus stack)
-- `grafana-dev` / `grafana-prod`
-- `loki-dev` / `loki-prod`
-- `tempo-dev` / `tempo-prod`
+**Key Principle:**
+✅ **ONE shared instance** of each infrastructure service
+✅ **Credential isolation** via per-environment users
+✅ **Only core-pipeline** has dev/prod deployments
 
-**Application Releases:**
-- `core-pipeline-dev` (dev-core)
-- `core-pipeline-prod` (prod-core)
+### ArgoCD Applications
 
-**Centralized:**
-- `cert-manager` (cert-manager)
-- `traefik` (kube-system)
-- `kube-prometheus` (monitoring)
-- `infrastructure` (infrastructure)
+**All deployments managed via GitOps:**
+
+**Infrastructure (sync-wave: 1):**
+- `infrastructure` - Single shared instance in infrastructure namespace
+
+**Monitoring (sync-wave: 1):**
+- `prometheus` - Centralized metrics
+- `grafana` - Unified dashboards
+- `loki` - Centralized logging
+- `tempo` - Distributed tracing
+
+**Applications (sync-wave: 2):**
+- `core-pipeline-dev` - Dev deployment with dev credentials
+- `core-pipeline-prod` - Prod deployment with prod credentials
 
 ## 🔐 Security
 
@@ -547,35 +572,52 @@ This infrastructure implements **defense-in-depth** security with per-service cr
 - HTTP → HTTPS redirects enforced
 
 ### Access Control
-- Separate namespaces for dev/prod isolation
-- Dedicated PostgreSQL instances per environment
-- Dedicated Kafka clusters per environment
+- Separate namespaces for dev/prod application isolation
+- **Shared infrastructure** with credential isolation:
+  - PostgreSQL: Separate users (`core_dev_user`, `core_prod_user`)
+  - Redis: Separate ACL users (`redis_dev_user`, `redis_prod_user`)
+  - Kafka: Shared cluster with topic-based isolation
+- ArgoCD RBAC for GitOps access control
 
 ## 🐛 Troubleshooting
 
 ### Common Issues and Solutions
 
-#### Kafka UI Returns 404
-**Symptom:** https://kafka.dev.theedgestory.org/ returns "404 page not found"
+#### ArgoCD Application Out of Sync
+**Symptom:** ArgoCD shows application as "OutOfSync"
 
-**Cause:** Kafka UI ingress may not be deployed or misconfigured
+**Cause:** Git state differs from cluster state
 
 **Solution:**
 ```bash
-# Check if Kafka UI is deployed
-kubectl get deployment -n dev-infra | grep kafka-ui
+# Check application status
+kubectl get application <app-name> -n argocd
 
-# Check ingress exists
-kubectl get ingress -n dev-infra | grep kafka
+# View differences
+kubectl describe application <app-name> -n argocd
 
-# If not deployed, check Helm values
-helm get values kafka-dev -n dev-infra
+# Manually trigger sync
+kubectl patch application <app-name> -n argocd --type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}'
 
-# Redeploy if needed
-helm upgrade --install kafka-dev ./charts/infrastructure/kafka \
-  --namespace dev-infra \
-  -f ./charts/infrastructure/kafka/values.yaml \
-  --set ui.enabled=true
+# Or use ArgoCD UI
+open https://argo.dev.theedgestory.org
+```
+
+#### Kafka UI Not Deployed
+**Symptom:** Kafka UI not accessible
+
+**Cause:** Optional component, may not be deployed
+
+**Solution:**
+```bash
+# Check if Kafka UI ArgoCD app exists
+kubectl get application kafka-ui -n argocd
+
+# Deploy via ArgoCD
+kubectl apply -f argocd-apps/kafka-ui.yaml
+
+# Trigger sync
+kubectl patch application kafka-ui -n argocd --type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}'
 ```
 
 #### HTTP Endpoints Return 404 Instead of Redirecting
