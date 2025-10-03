@@ -28,11 +28,8 @@ ingress:
 
 # Kafka cluster configuration
 kafkaClusters:
-  - name: dev-cluster
-    bootstrapServers: kafka-dev-controller-headless.dev-infra.svc.cluster.local:9092
-
-  - name: prod-cluster
-    bootstrapServers: kafka-prod-controller-headless.prod-infra.svc.cluster.local:9092
+  - name: infrastructure
+    bootstrapServers: kafka-controller-headless.infrastructure.svc.cluster.local:9092
 
 resources:
   requests:
