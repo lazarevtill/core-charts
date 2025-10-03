@@ -13,6 +13,7 @@ spec:
     chart: kube-prometheus-stack
     helm:
       values: |
+        fullnameOverride: prometheus-prod
         prometheus:
           prometheusSpec:
             retention: 30d
@@ -25,6 +26,14 @@ spec:
                       storage: 20Gi
         grafana:
           enabled: false
+        alertmanager:
+          enabled: false
+        kubeStateMetrics:
+          enabled: true
+        nodeExporter:
+          enabled: true
+        prometheusOperator:
+          enabled: true
   destination:
     server: https://kubernetes.default.svc
     namespace: prod-infra
