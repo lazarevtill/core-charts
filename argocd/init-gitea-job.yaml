@@ -5,19 +5,21 @@ metadata:
   namespace: argocd
 data:
   init.sh: |
-    #!/bin/bash
+    #!/bin/sh
     set -e
     
     echo "=== Initializing Gitea for ArgoCD ==="
     
     # Wait for Gitea API to be ready
     echo "Waiting for Gitea API..."
-    for i in {1..60}; do
-      if curl -f http://gitea.argocd.svc.cluster.local:3000 >/dev/null 2>&1; then
+    i=1
+    while [ $i -le 60 ]; do
+      if wget -q --spider http://gitea.argocd.svc.cluster.local:3000 2>/dev/null; then
         echo "✅ Gitea is ready"
         break
       fi
       echo "Waiting... ($i/60)"
+      i=$((i + 1))
       sleep 5
     done
     
@@ -31,24 +33,18 @@ data:
     echo "Creating Gitea user and repository..."
     
     # Create admin user
-    curl -X POST "http://gitea.argocd.svc.cluster.local:3000/api/v1/admin/users" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "username": "argocd",
-        "password": "argocd-password",
-        "email": "argocd@local",
-        "must_change_password": false,
-        "send_notify": false
-      }' || echo "User may already exist"
+    wget --post-data='{"username":"argocd","password":"argocd-password","email":"argocd@local","must_change_password":false,"send_notify":false}' \
+      --header='Content-Type: application/json' \
+      -O- \
+      http://gitea.argocd.svc.cluster.local:3000/api/v1/admin/users 2>&1 || echo "User may already exist"
     
     # Create repository using basic auth
-    curl -X POST "http://argocd:argocd-password@gitea.argocd.svc.cluster.local:3000/api/v1/user/repos" \
-      -H "Content-Type: application/json" \
-      -d '{
-        "name": "core-charts",
-        "private": false,
-        "auto_init": false
-      }' || echo "Repository may already exist"
+    wget --post-data='{"name":"core-charts","private":false,"auto_init":false}' \
+      --header='Content-Type: application/json' \
+      --http-user=argocd \
+      --http-password=argocd-password \
+      -O- \
+      http://gitea.argocd.svc.cluster.local:3000/api/v1/user/repos 2>&1 || echo "Repository may already exist"
     
     # Push to Gitea
     echo "Pushing to Gitea..."
