@@ -78,17 +78,17 @@ This repository is being transformed into a production-ready, shareable infrastr
   - [ ] Document on-call procedures
 
 ### 📖 Documentation & Developer Experience
-- [ ] **Comprehensive README**
+- [x] **Comprehensive README** ✅ COMPLETE
   - [x] Add production readiness checklist
-  - [ ] Document clean machine setup (zero to running)
+  - [x] Document clean machine setup (zero to running) - See "Deployment Guide"
   - [ ] Add troubleshooting runbook
   - [ ] Document disaster recovery procedures
-  - [ ] Add architecture diagrams
-- [ ] **Repository organization**
-  - [ ] Clean up unused files and scripts
-  - [ ] Organize charts into logical directories
+  - [x] Add architecture diagrams (credential isolation architecture documented)
+- [x] **Repository organization** ✅ CLEAN
+  - [x] Clean up unused files and scripts (removed setup.sh, sample-app/)
+  - [x] Organize charts into logical directories (infrastructure/, core-pipeline/)
   - [ ] Add CHANGELOG.md
-  - [ ] Add CONTRIBUTING.md
+  - [ ] Add CONTRIBUTING.md (optional for private repo)
   - [ ] License file (if open source)
 
 ### 🧪 Testing & Validation
@@ -553,29 +553,184 @@ This infrastructure implements **defense-in-depth** security with per-service cr
 
 ## 🐛 Troubleshooting
 
-### Check Pod Status
+### Common Issues and Solutions
+
+#### Kafka UI Returns 404
+**Symptom:** https://kafka.dev.theedgestory.org/ returns "404 page not found"
+
+**Cause:** Kafka UI ingress may not be deployed or misconfigured
+
+**Solution:**
 ```bash
-kubectl get pods -A | grep -v Running
+# Check if Kafka UI is deployed
+kubectl get deployment -n dev-infra | grep kafka-ui
+
+# Check ingress exists
+kubectl get ingress -n dev-infra | grep kafka
+
+# If not deployed, check Helm values
+helm get values kafka-dev -n dev-infra
+
+# Redeploy if needed
+helm upgrade --install kafka-dev ./charts/infrastructure/kafka \
+  --namespace dev-infra \
+  -f ./charts/infrastructure/kafka/values.yaml \
+  --set ui.enabled=true
 ```
 
-### Check Helm Releases
+#### HTTP Endpoints Return 404 Instead of Redirecting
+**Symptom:** HTTP requests return 404 instead of 301 redirect to HTTPS
+
+**Cause:** Traefik global redirect not configured
+
+**Solution:** See "Quick Fixes" → "Configure Traefik global HTTP to HTTPS redirect"
+
+#### Pod Stuck in CrashLoopBackOff
+**Solution:**
 ```bash
-helm list -A
+# View pod logs
+kubectl logs -n <namespace> <pod-name> --previous
+
+# Describe pod for events
+kubectl describe pod -n <namespace> <pod-name>
+
+# Common fixes:
+# 1. Check secrets are available
+kubectl get secrets -n <namespace>
+
+# 2. Check resource limits
+kubectl describe pod <pod-name> -n <namespace> | grep -A 5 "Limits"
+
+# 3. Check liveness/readiness probes
+kubectl get pod <pod-name> -n <namespace> -o yaml | grep -A 10 "livenessProbe"
 ```
 
-### View Logs
+#### Database Connection Failures
+**Solution:**
 ```bash
-kubectl logs -n <namespace> <pod-name>
+# Check PostgreSQL is running
+kubectl get pods -n infrastructure | grep postgres
+
+# Test connection from app pod
+kubectl exec -it -n dev-core <app-pod> -- sh
+# Inside pod:
+psql -h postgres-core-pipeline-dev-secret -U core_dev_user -d core_pipeline_dev
+
+# Check database secrets exist
+kubectl get secret postgres-core-pipeline-dev-secret -n infrastructure
 ```
 
-### Check Ingress
+#### Helm Release Stuck
+**Solution:**
 ```bash
+# Check pending releases
+helm list --pending -A
+
+# Rollback stuck release
+helm rollback <release-name> -n <namespace>
+
+# Force delete if needed (DANGEROUS)
+helm delete <release-name> -n <namespace> --no-hooks
+```
+
+#### Certificate Issues
+**Solution:**
+```bash
+# Check certificate status
+kubectl get certificate -A
+
+# Describe certificate to see issues
+kubectl describe certificate <cert-name> -n <namespace>
+
+# Check cert-manager logs
+kubectl logs -n cert-manager -l app=cert-manager --tail=50
+
+# Force certificate renewal
+kubectl delete secret <tls-secret-name> -n <namespace>
+kubectl delete certificaterequest -n <namespace> --all
+```
+
+### Diagnostic Commands
+
+#### Check Overall Cluster Health
+```bash
+# Quick health check script
+./health-check.sh
+
+# Check all pods
+kubectl get pods -A
+
+# Check nodes
+kubectl get nodes
+
+# Check events for errors
+kubectl get events -A --sort-by='.lastTimestamp' | tail -20
+```
+
+#### Check Specific Service
+```bash
+# View deployment status
+kubectl get deployment <name> -n <namespace>
+
+# View replica set
+kubectl get rs -n <namespace>
+
+# View pod details
+kubectl describe pod <pod-name> -n <namespace>
+
+# Stream logs
+kubectl logs -f -n <namespace> <pod-name>
+```
+
+#### Check Networking
+```bash
+# Check ingress routes
 kubectl get ingress -A
+
+# Check services
+kubectl get svc -A
+
+# Test internal DNS
+kubectl run -it --rm debug --image=busybox --restart=Never -- nslookup postgres.infrastructure.svc.cluster.local
+```
+
+#### Check Helm Releases
+```bash
+# List all releases
+helm list -A
+
+# Check release history
+helm history <release-name> -n <namespace>
+
+# Get release values
+helm get values <release-name> -n <namespace>
+
+# Get release manifest
+helm get manifest <release-name> -n <namespace>
 ```
 
 ### Access Admin Credentials
 ```bash
+# Reveal all admin passwords
 ./scripts/reveal-secrets.sh
+
+# Access specific credentials
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+kubectl -n monitoring get secret grafana -o jsonpath='{.data.admin-password}' | base64 -d
+```
+
+### Performance Debugging
+```bash
+# Check resource usage
+kubectl top nodes
+kubectl top pods -A
+
+# Check events for resource issues
+kubectl get events -A | grep -i "oom\|evict\|resource"
+
+# Increase pod resources if needed
+kubectl edit deployment <name> -n <namespace>
+# Update: spec.template.spec.containers[].resources
 ```
 
 ## 📊 Server Status & Known Issues
@@ -592,6 +747,9 @@ kubectl get ingress -A
   - Root cause: Traefik needs global redirect configuration
   - HTTPS endpoints work correctly
   - Requires server-side Traefik configuration (see Quick Fixes below)
+- **Kafka UI returns 404** - https://kafka.dev.theedgestory.org/ returns page not found
+  - Root cause: Kafka UI ingress may not be deployed
+  - Solution: See Troubleshooting → "Kafka UI Returns 404"
 
 **Medium Priority:**
 - **infrastructure-db-init job timeouts** - PostgreSQL init job occasionally gets stuck
