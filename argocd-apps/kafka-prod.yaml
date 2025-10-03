@@ -18,13 +18,14 @@ spec:
             registry: docker.io
             repository: bitnamilegacy/kafka
             tag: 3.8.0-debian-12-r3
-        replicaCount: 3
-        auth:
-          clientProtocol: sasl
-          sasl:
+          kraft:
+            enabled: true
+          zookeeper:
             enabled: false
-        zookeeper:
-          replicaCount: 1
+          controller:
+            replicaCount: 1
+          broker:
+            replicaCount: 3
   destination:
     server: https://kubernetes.default.svc
     namespace: prod-infra
