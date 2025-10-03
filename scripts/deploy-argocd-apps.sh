@@ -2,6 +2,10 @@
 set -e
 
 echo "Applying all ArgoCD applications..."
+# First, apply ArgoCD projects
+echo "Creating ArgoCD projects..."
+kubectl apply -f argocd/projects.yaml
+echo ""
 
 for app in argocd-apps/*.yaml; do
   echo "Applying $(basename $app)..."
