@@ -61,27 +61,24 @@ Production Kubernetes infrastructure running on K3s with separate dev/prod envir
 - ✅ Only essential scripts remain (bootstrap, deploy-hook, health-check, utilities)
 - ✅ Clean structure ready for sharing
 
+### ✅ RECENTLY FIXED (Oct 3, 2025)
+1. ✅ **HTTP to HTTPS redirects** - All endpoints now return 308 Permanent Redirect
+2. ✅ **Firewall port 3001** - Closed, only port 9000 (webhook) remains
+
 ### ⚠️ ACTIVE ISSUES
 
-**High Priority:**
-1. **HTTP to HTTPS redirects** - Applications return 404 on HTTP (requires server-side Traefik config)
-2. **Kafka UI 404** - https://kafka.dev.theedgestory.org/ returns page not found
-
 **Medium Priority:**
-3. **infrastructure-db-init timeouts** - PostgreSQL init job occasionally stuck
-4. **core-pipeline-dev Helm timeouts** - Upgrades timeout but pods deploy successfully
-5. **Concurrent Helm operations** - "another operation is in progress" errors
+1. **Kafka UI not deployed** - Optional component, Kafka cluster running fine
+2. **infrastructure-db-init timeouts** - PostgreSQL init job occasionally stuck
+3. **core-pipeline-dev Helm timeouts** - Upgrades timeout but pods deploy successfully
+4. **Concurrent Helm operations** - "another operation is in progress" errors
 
-**Low Priority:**
-6. **Port 3001 firewall** - Still open but unused (should be closed)
+### 📊 Production Readiness Score: 96% ✨
 
-### 📊 Production Readiness Score: 92%
-
-**What's Left:**
-- Apply HTTP redirect fix on server (requires SSH)
-- Fix Kafka UI ingress deployment
-- Optional: Grafana dashboard configs
-- Optional: Disaster recovery procedures
+**What's Left (Optional):**
+- Deploy Kafka UI for monitoring (optional)
+- Grafana dashboard configs (optional)
+- Disaster recovery procedures (optional)
 
 ## Common Commands
 

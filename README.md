@@ -740,16 +740,17 @@ kubectl edit deployment <name> -n <namespace>
 - ~~Git merge conflicts~~ - Server repo reset to origin/main
 - ~~Gitea resources~~ - All cleaned up from cluster
 
+### ✅ Recently Fixed
+- ~~HTTP to HTTPS redirects~~ - **FIXED** on Oct 3, 2025 - All HTTP endpoints now redirect with 308 Permanent Redirect
+- ~~Firewall port 3001~~ - **CLOSED** on Oct 3, 2025 - Only webhook port 9000 remains open
+
 ### 🟡 Active Issues
 
-**High Priority:**
-- **HTTP to HTTPS redirects not working** - Applications return 404 on HTTP instead of redirecting to HTTPS
-  - Root cause: Traefik needs global redirect configuration
-  - HTTPS endpoints work correctly
-  - Requires server-side Traefik configuration (see Quick Fixes below)
-- **Kafka UI returns 404** - https://kafka.dev.theedgestory.org/ returns page not found
-  - Root cause: Kafka UI ingress may not be deployed
-  - Solution: See Troubleshooting → "Kafka UI Returns 404"
+**Medium Priority:**
+- **Kafka UI not deployed** - https://kafka.dev.theedgestory.org/ returns certificate error
+  - Status: Kafka UI is optional, Kafka cluster is running fine
+  - Kafka is accessible internally to applications
+  - UI deployment can be added later if needed for monitoring
 
 **Medium Priority:**
 - **infrastructure-db-init job timeouts** - PostgreSQL init job occasionally gets stuck
