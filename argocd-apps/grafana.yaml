@@ -32,7 +32,7 @@ spec:
             datasources:
               - name: Prometheus
                 type: prometheus
-                url: http://prom-prometheus.monitoring:9090
+                url: http://prometheus-server.monitoring:80
                 isDefault: true
               - name: Loki
                 type: loki

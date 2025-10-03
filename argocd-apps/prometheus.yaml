@@ -9,42 +9,30 @@ spec:
   project: infrastructure
   source:
     repoURL: https://prometheus-community.github.io/helm-charts
-    targetRevision: 67.4.0
-    chart: kube-prometheus-stack
+    targetRevision: 25.30.1
+    chart: prometheus
     helm:
       values: |
-        nameOverride: prom
-        fullnameOverride: prom
-        prometheus:
-          service:
-            type: ClusterIP
-          prometheusSpec:
-            retention: 30d
-            replicas: 1
-            resources:
-              requests:
-                memory: 1Gi
-                cpu: 500m
-              limits:
-                memory: 2Gi
-                cpu: 1000m
-            storageSpec:
-              volumeClaimTemplate:
-                spec:
-                  accessModes: ["ReadWriteOnce"]
-                  resources:
-                    requests:
-                      storage: 20Gi
-        grafana:
-          enabled: false
+        server:
+          retention: 30d
+          persistentVolume:
+            enabled: true
+            size: 20Gi
+          resources:
+            requests:
+              memory: 1Gi
+              cpu: 500m
+            limits:
+              memory: 2Gi
+              cpu: 1000m
         alertmanager:
           enabled: false
-        kubeStateMetrics:
+        kube-state-metrics:
           enabled: true
-        nodeExporter:
+        prometheus-node-exporter:
           enabled: true
-        prometheusOperator:
-          enabled: true
+        prometheus-pushgateway:
+          enabled: false
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
@@ -54,4 +42,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
