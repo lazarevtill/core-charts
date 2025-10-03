@@ -1,0 +1,58 @@
+# Kafka UI configuration
+replicaCount: 1
+
+image:
+  repository: provectuslabs/kafka-ui
+  tag: latest
+  pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+  hosts:
+    - host: kafka.dev.theedgestory.org
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: kafka-ui-tls
+      hosts:
+        - kafka.dev.theedgestory.org
+
+# Kafka cluster configuration
+kafkaClusters:
+  - name: dev-cluster
+    bootstrapServers: kafka-dev-controller-headless.dev-infra.svc.cluster.local:9092
+
+  - name: prod-cluster
+    bootstrapServers: kafka-prod-controller-headless.prod-infra.svc.cluster.local:9092
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 5
