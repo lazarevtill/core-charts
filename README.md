@@ -157,38 +157,145 @@ This repository is being transformed into a production-ready, shareable infrastr
 | Grafana | https://grafana.dev.theedgestory.org | ✅ Working |
 | Prometheus | https://prometheus.dev.theedgestory.org | ✅ Working |
 
-## 🚀 Quick Start
+## 🚀 Deployment Guide
 
-### Prerequisites
-- Kubernetes cluster (K3s/K3d/EKS)
-- kubectl configured
-- Helm 3.x
-- Git
+### 📦 Clean Machine Deployment (Zero to Running)
 
-### Initial Setup
+This guide will get you from a fresh Kubernetes cluster to a fully running infrastructure.
+
+#### Prerequisites
+- **Kubernetes cluster** (K3s/K3d/EKS/GKE) with kubectl access
+- **Helm 3.13+** installed
+- **Git** installed
+- **openssl** for secret generation
+- **Domain** with DNS pointing to your cluster's LoadBalancer IP
+
+#### Step 1: Clone Repository
 ```bash
-# Clone repository
 git clone https://github.com/uz0/core-charts.git
 cd core-charts
-
-# Bootstrap infrastructure (creates namespaces, secrets, deploys charts)
-./setup.sh
-
-# Verify health
-./health-check.sh
 ```
 
-### Daily Operations
+#### Step 2: Prepare Secrets
+
+Choose ONE of three methods:
+
+**Method A: Auto-Generate Secrets (Recommended for Testing)**
 ```bash
-# Deploy changes (runs automatically via webhook)
+# Bootstrap will auto-generate all passwords
+./bootstrap.sh
+```
+
+**Method B: Provide Secrets from File**
+```bash
+# Copy and edit the template
+cp secrets.example.yaml secrets.yaml
+nano secrets.yaml  # Fill in your values
+
+# Bootstrap with your secrets
+cat secrets.yaml | ./bootstrap.sh
+```
+
+**Method C: Use Environment Variables**
+```bash
+# Set required environment variables
+export GITHUB_USERNAME="your_username"
+export GITHUB_TOKEN="ghp_xxxxxxxxxxxxx"
+export LETSENCRYPT_EMAIL="admin@example.com"
+export DOMAIN_BASE="example.com"
+
+# Generate and pipe to bootstrap
+./generate-secrets.sh | ./bootstrap.sh
+```
+
+#### Step 3: Verify Deployment
+```bash
+# Check all pods are running
+kubectl get pods -A
+
+# Run health check
+./health-check.sh
+
+# Access ArgoCD (get password from bootstrap output)
+open https://argo.dev.example.com
+```
+
+#### Step 4: Deploy Applications (Optional)
+```bash
+# Applications can be deployed via ArgoCD UI or kubectl
+kubectl apply -f argocd-apps/
+
+# Or trigger webhook deployment (if webhook configured)
+./deploy-hook.sh
+```
+
+### ⏱️ Expected Deployment Time
+- **Infrastructure bootstrap**: 5-8 minutes
+- **First application deployment**: 2-3 minutes
+- **Total**: ~10 minutes from zero to running
+
+### 🔑 Retrieving Credentials
+
+After bootstrap completes, credentials are printed to stdout. To retrieve them later:
+
+```bash
+# Reveal all admin passwords
+./scripts/reveal-secrets.sh
+
+# Access specific secrets
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+kubectl -n monitoring get secret grafana -o jsonpath='{.data.admin-password}' | base64 -d
+```
+
+### 🛠️ Daily Operations
+```bash
+# Deploy changes (runs automatically via webhook in production)
 ./deploy-hook.sh
 
-# Connect to a pod
+# Connect to a specific pod for debugging
 ./scripts/connect-pod.sh core-pipeline-dev
 
-# Reveal admin credentials
-./scripts/reveal-secrets.sh
+# View all pod logs
+kubectl logs -n dev-core -l app=core-pipeline --tail=100
+
+# Restart a deployment
+kubectl rollout restart deployment/core-pipeline-dev -n dev-core
 ```
+
+### 🔄 Webhook Setup (Production Only)
+
+For automatic deployments on git push, configure GitHub webhook:
+
+1. **Install webhook listener on server:**
+   ```bash
+   # Install webhook binary
+   wget https://github.com/adnanh/webhook/releases/latest/download/webhook-linux-amd64.tar.gz
+   tar xvf webhook-linux-amd64.tar.gz
+   sudo mv webhook /usr/local/bin/
+
+   # Create webhook config (see README Webhook section for full config)
+   sudo nano /etc/webhook.conf
+
+   # Start webhook service
+   webhook -hooks /etc/webhook.conf -port 9000
+   ```
+
+2. **Configure GitHub:**
+   - Go to Repository → Settings → Webhooks → Add webhook
+   - Payload URL: `http://YOUR_SERVER:9000/hooks/deploy-core-charts`
+   - Content type: `application/json`
+   - Secret: (from your webhook config)
+   - Events: Just the push event
+
+3. **Test webhook:**
+   ```bash
+   # Make a commit and push
+   git commit --allow-empty -m "test: webhook trigger"
+   git push origin main
+
+   # Check webhook service logs
+   journalctl -u webhook -f
+   ```
 
 ## 🔄 Webhook Automation
 
