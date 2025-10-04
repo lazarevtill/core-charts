@@ -31,11 +31,10 @@ git pull origin main
 echo "✅ Code updated to latest commit: $(git rev-parse --short HEAD)"
 echo ""
 
-# 2. Build Helm dependencies (needed for local chart testing)
-echo "=== 2. Build Helm chart dependencies ==="
-echo "Building infrastructure chart dependencies..."
-helm dependency build charts/infrastructure/
-echo "✅ Dependencies vendored"
+# 2. ArgoCD will fetch dependencies from remote registries
+echo "=== 2. Using remote Helm charts (Pure GitOps) ==="
+echo "ArgoCD will fetch charts from Bitnami registry automatically"
+echo "✅ No local dependency build needed"
 echo ""
 
 # 3. Apply ArgoCD application manifests

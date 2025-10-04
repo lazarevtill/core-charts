@@ -161,10 +161,10 @@ helm repo update >/dev/null 2>&1
 print_success "Helm repositories configured"
 echo ""
 
-# Build Helm dependencies
-echo "=== 9. Build Helm Chart Dependencies ==="
-helm dependency build charts/infrastructure/ >/dev/null 2>&1
-print_success "Chart dependencies built"
+# Remote Helm charts (no build needed)
+echo "=== 9. Using Remote Helm Charts ==="
+print_info "ArgoCD will fetch dependencies from Bitnami registry"
+print_success "Pure GitOps architecture configured"
 echo ""
 
 # Create ArgoCD Projects
