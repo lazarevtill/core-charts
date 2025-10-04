@@ -1,10 +1,19 @@
 # Kafka configuration with KRaft mode (no Zookeeper)
 kafka:
   # Use Bitnami Legacy registry for images (post Aug 2025)
+  # Override both main image and init container images
   image:
     registry: docker.io
     repository: bitnamilegacy/kafka
     tag: 3.8.0-debian-12-r3
+
+  # Override init container image explicitly
+  volumePermissions:
+    enabled: true
+    image:
+      registry: docker.io
+      repository: bitnami/os-shell
+      tag: 12-debian-12-r16
 
   # KRaft mode configuration
   kraft:
