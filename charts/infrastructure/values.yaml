@@ -7,14 +7,14 @@ postgresql:
 redis:
   enabled: true
 
-kafka:
+kafka-setup:
   enabled: true
-  # Override the Kafka subchart image to use valid bitnamilegacy image
   kafka:
-    image:
-      registry: docker.io
-      repository: bitnamilegacy/kafka
-      tag: 3.8.0-debian-12-r3
+    kafka:
+      image:
+        registry: docker.io
+        repository: bitnamilegacy/kafka
+        tag: 3.8.0-debian-12-r3
 
 # Global namespace for infrastructure
 global:
