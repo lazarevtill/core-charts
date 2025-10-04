@@ -7,16 +7,16 @@ appVersion: "1.0.0"
 
 dependencies:
   - name: postgresql
-    version: 16.4.0
+    version: 16.7.27
     repository: https://charts.bitnami.com/bitnami
     condition: postgresql.enabled
 
   - name: redis
-    version: 20.6.0
+    version: 22.0.7
     repository: https://charts.bitnami.com/bitnami
     condition: redis.enabled
 
   - name: kafka
-    version: 31.0.0
+    version: 32.4.3
     repository: https://charts.bitnami.com/bitnami
     condition: kafka.enabled
