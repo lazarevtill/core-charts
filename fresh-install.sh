@@ -56,22 +56,33 @@ wait_for_deployment() {
 # ============================================================================
 echo -e "${GREEN}[1/6] Cleaning up existing resources...${NC}"
 
-# Delete application namespaces
+# Delete application namespaces (non-blocking)
 for ns in dev-core prod-core infrastructure monitoring; do
     if kubectl get namespace "$ns" &>/dev/null; then
         echo "  Deleting namespace: $ns"
-        kubectl delete namespace "$ns" --timeout=60s --ignore-not-found=true &
+        kubectl delete namespace "$ns" --timeout=30s --ignore-not-found=true 2>/dev/null &
     fi
 done
 
 # Delete old KubeSphere if exists
 if kubectl get namespace kubesphere-system &>/dev/null; then
     echo "  Deleting old KubeSphere..."
-    kubectl delete namespace kubesphere-system --timeout=60s --ignore-not-found=true &
+    kubectl delete namespace kubesphere-system --timeout=30s --ignore-not-found=true 2>/dev/null &
 fi
 
-# Wait for all deletions
-wait
+# Wait for deletions (but don't fail if they timeout)
+echo "  Waiting for namespace deletions (max 30 seconds)..."
+wait 2>/dev/null || true
+
+# Force cleanup of stuck namespaces
+for ns in dev-core prod-core infrastructure monitoring kubesphere-system; do
+    if kubectl get namespace "$ns" &>/dev/null; then
+        echo "  Force cleaning stuck namespace: $ns"
+        kubectl patch namespace "$ns" -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
+        kubectl delete namespace "$ns" --force --grace-period=0 2>/dev/null || true
+    fi
+done
+
 echo -e "${GREEN}✓ Cleanup complete${NC}"
 echo ""
 
@@ -80,8 +91,17 @@ echo ""
 # ============================================================================
 echo -e "${GREEN}[2/6] Installing KubeSphere v4.1.3 Core...${NC}"
 
+# Clear Helm cache to avoid corrupted files
+echo "  Clearing Helm cache..."
+rm -rf ~/.cache/helm/repository/*.tgz 2>/dev/null || true
+
+# Add KubeSphere repo
+helm repo add kubesphere https://charts.kubesphere.io/main 2>/dev/null || true
+helm repo update kubesphere
+
 helm upgrade --install -n kubesphere-system --create-namespace \
-  ks-core https://charts.kubesphere.io/main/ks-core-1.1.4.tgz \
+  ks-core kubesphere/ks-core \
+  --version 1.1.4 \
   --wait --timeout=5m
 
 echo "  Waiting for KubeSphere pods..."
