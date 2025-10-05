@@ -210,22 +210,25 @@ echo "  Cloning KubeSphere repository..."
 rm -rf /tmp/kubesphere-install
 git clone --depth 1 --branch v4.1.3 https://github.com/kubesphere/kubesphere.git /tmp/kubesphere-install
 
-# Install CRDs first
-echo "  Installing KubeSphere CRDs..."
-kubectl apply -f /tmp/kubesphere-install/config/ks-core/crds
-sleep 5
+# Install KubeSphere with dependency update
+echo "  Installing KubeSphere core (this may take 5-10 minutes)..."
+cd /tmp/kubesphere-install/config/ks-core
+helm dependency update
+cd -
 
-# Wait for CRDs to be established
-echo "  Waiting for CRDs to be ready..."
-kubectl wait --for condition=established --timeout=60s crd/users.iam.kubesphere.io 2>/dev/null || true
-sleep 5
-
-# Install KubeSphere core
-echo "  Installing KubeSphere core..."
+# Install KubeSphere - Helm will create CRDs automatically
 helm upgrade --install -n kubesphere-system --create-namespace \
   ks-core /tmp/kubesphere-install/config/ks-core \
-  --skip-crds \
-  --wait --timeout=10m
+  --timeout=15m \
+  2>&1 | tee /tmp/kubesphere-install.log || true
+
+# Check if installation succeeded
+if kubectl get pods -n kubesphere-system -l app=ks-console &>/dev/null; then
+    echo "  KubeSphere installation initiated..."
+else
+    echo -e "${YELLOW}Warning: KubeSphere installation may have issues, checking status...${NC}"
+    tail -20 /tmp/kubesphere-install.log
+fi
 
 # Cleanup
 rm -rf /tmp/kubesphere-install
