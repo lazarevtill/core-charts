@@ -146,21 +146,32 @@ echo ""
 # ============================================================================
 echo -e "${BLUE}[3/8] Installing cert-manager...${NC}"
 
-# Remove old cert-manager if exists
-kubectl delete namespace cert-manager --ignore-not-found=true --wait=false 2>/dev/null || true
-sleep 5
+# Wait for cert-manager namespace to be fully deleted if it exists
+if kubectl get namespace cert-manager &>/dev/null; then
+    echo "  Waiting for old cert-manager namespace to be deleted..."
+    kubectl delete namespace cert-manager --wait=true --timeout=60s 2>/dev/null || true
+    sleep 10
+fi
 
 # Install cert-manager
+echo "  Installing cert-manager..."
 kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.3/cert-manager.yaml
 
-# Wait for cert-manager
+# Wait for cert-manager pods
 echo "  Waiting for cert-manager to be ready..."
-sleep 15
+sleep 20
 kubectl wait --for=condition=ready pod -l app.kubernetes.io/instance=cert-manager -n cert-manager --timeout=120s || \
   echo -e "${YELLOW}Warning: cert-manager may still be starting...${NC}"
 
+# Wait a bit more for webhook to be fully ready
+sleep 10
+
 # Create Let's Encrypt ClusterIssuer
-cat <<EOF | kubectl apply -f -
+echo "  Creating Let's Encrypt ClusterIssuer..."
+MAX_RETRIES=5
+RETRY_COUNT=0
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if cat <<EOF | kubectl apply -f - 2>/dev/null; then
 apiVersion: cert-manager.io/v1
 kind: ClusterIssuer
 metadata:
@@ -176,6 +187,12 @@ spec:
         ingress:
           class: traefik
 EOF
+        break
+    fi
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+    echo "  Waiting for cert-manager webhook... retry $RETRY_COUNT/$MAX_RETRIES"
+    sleep 10
+done
 
 echo -e "${GREEN}✓ cert-manager installed${NC}"
 echo ""
