@@ -44,12 +44,20 @@ echo -e "${GREEN}[1/5] Installing KubeSphere v4.1.3 Core...${NC}"
 
 # Clear Helm cache to avoid corrupted files
 echo "  Clearing Helm cache..."
-rm -rf ~/.cache/helm/repository/*.tgz 2>/dev/null || true
+rm -rf ~/.cache/helm/repository/ 2>/dev/null || true
+rm -rf ~/.cache/helm/archive/ 2>/dev/null || true
 
-# Install KubeSphere using direct chart URL
+# Download and install KubeSphere chart directly
+echo "  Downloading KubeSphere chart..."
+curl -L -o /tmp/ks-core-1.1.4.tgz https://charts.kubesphere.io/main/ks-core-1.1.4.tgz
+
+echo "  Installing KubeSphere..."
 helm upgrade --install -n kubesphere-system --create-namespace \
-  ks-core https://charts.kubesphere.io/main/ks-core-1.1.4.tgz \
+  ks-core /tmp/ks-core-1.1.4.tgz \
   --wait --timeout=5m
+
+# Cleanup
+rm -f /tmp/ks-core-1.1.4.tgz
 
 echo "  Waiting for KubeSphere pods..."
 sleep 10
