@@ -40,9 +40,18 @@ echo ""
 # ============================================================================
 echo -e "${BLUE}[0/8] Pre-flight checks...${NC}"
 
+# Set KUBECONFIG if not set
+if [ -z "$KUBECONFIG" ]; then
+    if [ -f /etc/rancher/k3s/k3s.yaml ]; then
+        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+        echo "  Setting KUBECONFIG=/etc/rancher/k3s/k3s.yaml"
+    fi
+fi
+
 # Check if kubectl is working
 if ! kubectl version --short &>/dev/null; then
     echo -e "${RED}ERROR: kubectl is not working! Check K3s status.${NC}"
+    echo "KUBECONFIG: ${KUBECONFIG:-not set}"
     exit 1
 fi
 
