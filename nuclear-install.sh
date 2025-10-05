@@ -49,7 +49,7 @@ if [ -z "$KUBECONFIG" ]; then
 fi
 
 # Check if kubectl is working
-if ! kubectl version --short &>/dev/null; then
+if ! kubectl get nodes &>/dev/null; then
     echo -e "${RED}ERROR: kubectl is not working! Check K3s status.${NC}"
     echo "KUBECONFIG: ${KUBECONFIG:-not set}"
     exit 1
