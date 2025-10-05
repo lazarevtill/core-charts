@@ -67,6 +67,12 @@ if ! command -v git &>/dev/null; then
     apt-get update && apt-get install -y git
 fi
 
+# Check if jq is installed
+if ! command -v jq &>/dev/null; then
+    echo -e "${YELLOW}Installing jq...${NC}"
+    apt-get update && apt-get install -y jq
+fi
+
 echo -e "${GREEN}✓ Pre-flight checks complete${NC}"
 echo ""
 
@@ -95,10 +101,13 @@ kubectl get namespaces -o json | \
   xargs -r -I {} kubectl patch namespace {} -p '{"metadata":{"finalizers":[]}}' --type=merge 2>/dev/null || true
 
 # Delete all CRDs (except K3s built-in ones)
-echo "  Removing all CRDs..."
+echo "  Removing all CRDs (this may take a minute)..."
 kubectl get crds -o name | \
   grep -v 'traefik\|helm\|k3s' | \
-  xargs -r kubectl delete --ignore-not-found=true 2>/dev/null || true
+  xargs -r kubectl delete --ignore-not-found=true --timeout=10s 2>/dev/null &
+
+# Don't wait for CRD deletion to complete
+sleep 5
 
 # Delete all PVCs and PVs
 echo "  Removing all PVCs and PVs..."
