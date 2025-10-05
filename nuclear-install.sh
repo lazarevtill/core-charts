@@ -210,9 +210,21 @@ echo "  Cloning KubeSphere repository..."
 rm -rf /tmp/kubesphere-install
 git clone --depth 1 --branch v4.1.3 https://github.com/kubesphere/kubesphere.git /tmp/kubesphere-install
 
-echo "  Installing KubeSphere from source..."
+# Install CRDs first
+echo "  Installing KubeSphere CRDs..."
+kubectl apply -f /tmp/kubesphere-install/config/ks-core/crds
+sleep 5
+
+# Wait for CRDs to be established
+echo "  Waiting for CRDs to be ready..."
+kubectl wait --for condition=established --timeout=60s crd/users.iam.kubesphere.io 2>/dev/null || true
+sleep 5
+
+# Install KubeSphere core
+echo "  Installing KubeSphere core..."
 helm upgrade --install -n kubesphere-system --create-namespace \
   ks-core /tmp/kubesphere-install/config/ks-core \
+  --skip-crds \
   --wait --timeout=10m
 
 # Cleanup
