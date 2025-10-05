@@ -1,13 +1,29 @@
-# Core Infrastructure - Production Kubernetes Setup
+# Core Infrastructure - Kubernetes Platform
 
-**Status**: 🟡 Under Active Development
+**Status**: 🔄 **Migrating to KubeSphere Platform**
 **TLS Certificates**: ✅ All Valid (Let's Encrypt)
-**Production Readiness**: 🔨 In Progress (see checklist below)
+**Platform**: KubeSphere 3.4.1 on K3s
 **Last Updated**: October 2025
 
-## 🎯 Overview
+## 🚀 **NEW: Migration to KubeSphere Complete Platform**
+
+We're migrating from custom ArgoCD setup to **KubeSphere** - a complete, batteries-included Kubernetes platform with:
+
+- ✅ **All-in-one platform** - DevOps, Monitoring, Logging built-in
+- ✅ **Beautiful UI** - Manage everything from web console
+- ✅ **2-command install** - Simple deployment on existing K3s
+- ✅ **Production-ready operators** - Strimzi Kafka, CloudNativePG PostgreSQL
+- ✅ **GitOps ready** - Works with existing workflows
+
+**📖 [Start Migration Now →](./MIGRATION-TO-KUBESPHERE.md)**
+
+---
+
+## 🎯 Current Overview (Legacy Setup)
 
 Production-ready Kubernetes infrastructure managed via **GitOps with ArgoCD**. Features shared infrastructure (PostgreSQL, Redis, Kafka, Prometheus) with credential isolation for dev/prod environments. All deployments declaratively defined in git and auto-synced to cluster.
+
+**⚠️ Note**: This setup is being replaced with KubeSphere platform. See migration guide above.
 
 ## ✅ Production Readiness Checklist
 
