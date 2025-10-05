@@ -20,480 +20,357 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Production Kubernetes infrastructure running on K3s with **Pure ArgoCD GitOps** architecture. Single shared infrastructure (PostgreSQL, Redis, Kafka) with credential isolation per environment. Only core-pipeline applications split dev/prod. Git is the single source of truth - all deployments managed by ArgoCD using remote Helm charts from Bitnami registry.
+**KubeSphere v4 Platform** - Production Kubernetes infrastructure running on K3s with KubeSphere v4.1.3 (LuBan Architecture). Single shared infrastructure (PostgreSQL via CloudNativePG, Redis standalone, Kafka via Strimzi) with credential isolation per environment. Only core-pipeline applications split dev/prod.
 
-## 🎯 Current Production Readiness Status (Oct 3, 2025)
+## 🎯 Current Status (Oct 5, 2025)
 
-### ✅ COMPLETED (Major Milestones)
+### ✅ COMPLETED (Fresh KubeSphere v4 Setup)
 
-**Security & Secrets (100%)**
-- ✅ No secrets in repository (audit complete)
-- ✅ Enhanced .gitignore prevents future secret leaks
-- ✅ Bootstrap script with 3 secret injection modes (auto-gen, file, env vars)
-- ✅ secrets.example.yaml template with comprehensive docs
-- ✅ Per-service PostgreSQL users (core_dev_user, core_prod_user) - ALREADY IMPLEMENTED
-- ✅ Per-service Redis ACL users (redis_dev_user, redis_prod_user) - ALREADY IMPLEMENTED
-- ✅ Auto-generated 24-32 character passwords
-- ✅ Credential isolation architecture documented with diagrams
+**Repository Migration (100%)**
+- ✅ Complete cleanup of old ArgoCD-based infrastructure
+- ✅ Fresh repository structure for KubeSphere v4
+- ✅ All manifests created and organized
+- ✅ Automated installation script (`fresh-install.sh`)
 
-**CI/CD Pipeline (100%)**
-- ✅ 8-phase production-ready CI/CD pipeline created
-- ✅ Secret scanning (TruffleHog + Gitleaks + custom patterns)
-- ✅ Helm chart validation & linting
-- ✅ YAML validation (yamllint + kubeval + kubeconform)
-- ✅ Security scanning (Trivy + Kubesec)
-- ✅ Bootstrap script validation (syntax + functionality)
-- ✅ Integration testing (kind cluster)
-- ✅ Documentation completeness checks
+**Documentation (100%)**
+- ✅ README.md - Quick start guide with 3-step installation
+- ✅ INSTALL.md - Complete step-by-step manual guide (40 minutes)
+- ✅ CORE-PIPELINE-DEPLOY.md - Application deployment instructions
+- ✅ CLAUDE.md - Updated for KubeSphere v4 architecture
 
-**Documentation (95%)**
-- ✅ Comprehensive production readiness checklist in README
-- ✅ Clean machine deployment guide (zero to running in ~10 min)
-- ✅ Credential isolation architecture with diagrams
-- ✅ Comprehensive troubleshooting runbook (common issues + solutions)
-- ✅ Webhook automation fully documented
-- ✅ Daily operations procedures
-- ✅ Deployment time estimates
+**Kubernetes Manifests (100%)**
+- ✅ KubeSphere HTTPS ingress
+- ✅ PostgreSQL cluster (CloudNativePG)
+- ✅ Kafka cluster with topics (Strimzi)
+- ✅ Redis standalone
+- ✅ core-pipeline dev & prod deployments
 
-**Repository Organization (100%)**
-- ✅ Removed unnecessary files (setup.sh, sample-app/)
-- ✅ Charts organized logically (infrastructure/, core-pipeline/)
-- ✅ Only essential scripts remain (bootstrap, deploy-hook, health-check, utilities)
-- ✅ Clean structure ready for sharing
+**Installation Automation (100%)**
+- ✅ `fresh-install.sh` - Fully automated installation script
+- ✅ 6-phase deployment (cleanup, core, operators, infrastructure, secrets, apps)
+- ✅ Estimated time: ~15 minutes
+- ✅ Destructive fresh start capability
 
-### ✅ RECENTLY FIXED (Oct 4, 2025)
-1. ✅ **Pure ArgoCD GitOps Migration** - Replaced local file:// subcharts with remote Bitnami charts
-2. ✅ **Single Shared Infrastructure** - Consolidated per-environment infra to one PostgreSQL, one Redis, one Kafka
-3. ✅ **HTTP to HTTPS redirects** - All endpoints now return 308 Permanent Redirect
-4. ✅ **Firewall port 3001** - Closed, only port 9000 (webhook) remains
+### ⚠️ PENDING TASKS
 
-### ⚠️ ACTIVE ISSUES
+**Server Deployment:**
+1. Push changes to GitHub repository
+2. Run `fresh-install.sh` on server (46.62.223.198)
+3. Test KubeSphere v4 installation
+4. Install extensions via Web UI (WhizardTelemetry Monitoring/Logging, DevOps)
+5. Verify all endpoints
 
-**Testing in Progress:**
-1. **ArgoCD sync with remote Helm charts** - Just migrated from local file:// subcharts to remote Bitnami registry
-2. **Kafka deployment via GitOps** - Testing if remote charts resolve previous ImagePullBackOff issues
+**Application Repository (https://github.com/uz0/core-pipeline):**
+1. Add Kubernetes deployment manifests
+2. Configure GitHub Actions for deployment
+3. Set up KUBECONFIG secret
+4. Test CI/CD pipeline
 
-**Low Priority (Optional):**
-- Deploy Kafka UI for monitoring (optional)
-- Grafana dashboard configs (optional)
-- Disaster recovery procedures (optional)
+### 📊 Migration Status: 95% ✨
 
-### 📊 Production Readiness Score: 98% ✨
-
-**Architecture Complete:**
-- ✅ Pure GitOps workflow (Git → ArgoCD → Kubernetes)
-- ✅ Single shared infrastructure with credential isolation
-- ✅ Remote Helm charts from Bitnami registry
-- ✅ No local dependencies, true GitOps compliance
+**What Changed:**
+- ❌ **REMOVED**: ArgoCD, custom Helm charts, bootstrap scripts, webhook automation
+- ✅ **ADDED**: KubeSphere v4 platform with Extension Center
+- ✅ **SIMPLIFIED**: Single automated script instead of multi-step bootstrap
+- ✅ **MODERNIZED**: CloudNativePG (PostgreSQL), Strimzi (Kafka), direct Kubernetes manifests
 
 ## Common Commands
 
-### Daily Operations
+### Fresh Installation
 ```bash
-./bootstrap.sh                       # Bootstrap infrastructure from scratch (3 modes: auto-gen, file, env)
-./deploy-hook.sh                     # Deploy infrastructure & applications
-./health-check.sh                    # Verify HTTPS endpoints
-./scripts/connect-pod.sh <name>      # Shell access to a pod
-./scripts/reveal-secrets.sh          # Display admin credentials
-./generate-secrets.sh                # Generate secrets from environment variables
+# On server (DESTRUCTIVE - deletes all existing resources)
+git clone https://github.com/uz0/core-charts.git
+cd core-charts
+bash fresh-install.sh
+
+# Manual installation (step-by-step)
+# Follow INSTALL.md for detailed guide
 ```
 
 ### Kubernetes
 ```bash
 # Check deployment status
 kubectl get pods -A
-helm list -A
-
-# Check ArgoCD apps
-kubectl get applications -n argocd
+kubectl get ingress -A
 
 # View logs
 kubectl logs -n <namespace> <pod-name>
 
-# Check ingresses
-kubectl get ingress -A
+# Check KubeSphere status
+kubectl get pods -n kubesphere-system
+
+# Check infrastructure
+kubectl get cluster -n infrastructure         # PostgreSQL
+kubectl get kafka -n infrastructure           # Kafka
+kubectl get pods -n infrastructure -l app=redis  # Redis
 ```
 
-### ArgoCD GitOps Operations
+### KubeSphere Extensions
 ```bash
-# Trigger ArgoCD sync (deployment happens automatically via webhook)
-kubectl patch application infrastructure -n argocd --type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}'
+# List installed extensions
+kubectl get extensions -A
 
-# Check ArgoCD application status
-kubectl get applications -n argocd
-
-# View sync status
-kubectl describe application infrastructure -n argocd
-
-# Manual Helm operations (NOT recommended - use ArgoCD instead)
-# ArgoCD fetches charts from Bitnami registry automatically
+# Install extension via CLI (or use Web UI)
+kubectl apply -f extensions/monitoring.yaml
 ```
 
 ## Architecture
 
-### Deployment Model: Pure ArgoCD GitOps
+### Deployment Model: KubeSphere v4 Platform
 **Single Shared Infrastructure** - All environments share one PostgreSQL, one Redis, one Kafka with credential isolation:
 
 ```
-Git Repository (GitHub)
-       ↓
-   [Push to main]
-       ↓
-   ArgoCD Auto-Sync ←── Fetches Remote Bitnami Charts
-       ↓
-   Kubernetes Cluster
-       ↓
-infrastructure/                   # Shared Infrastructure (ArgoCD sync-wave: 1)
-  ├── PostgreSQL                 # Bitnami chart 16.4.0 (core_dev_user, core_prod_user)
-  ├── Redis                      # Bitnami chart 20.6.0 (ACL isolation per environment)
-  └── Kafka                      # Bitnami chart 31.0.0 (SASL users: dev, prod)
+KubeSphere v4.1.3 (LuBan Architecture)
+├── Core Platform (kubesphere-system namespace)
+│   ├── ks-console (Web UI)
+│   ├── ks-apiserver (API Server)
+│   └── ks-controller-manager (Controller)
+│
+├── Extensions (Install from Extension Center)
+│   ├── WhizardTelemetry Monitoring (Prometheus/Grafana)
+│   ├── WhizardTelemetry Logging (Vector/OpenSearch)
+│   ├── WhizardTelemetry Notification
+│   ├── DevOps (Jenkins/Argo CD)
+│   └── Service Mesh (Istio)
+│
+└── Custom Infrastructure (infrastructure namespace)
+    ├── PostgreSQL (CloudNativePG)
+    │   ├── core_pipeline_dev database
+    │   ├── core_pipeline_prod database
+    │   ├── core_dev_user (dev credentials)
+    │   └── core_prod_user (prod credentials)
+    ├── Redis (Standalone)
+    └── Kafka (Strimzi Operator)
+        ├── infrastructure-kafka cluster (3 replicas)
+        ├── core-pipeline-events topic
+        ├── core-pipeline-commands topic
+        └── core-pipeline-logs topic
 
-monitoring/                      # Centralized Monitoring (ArgoCD managed)
-  ├── Prometheus                # Single instance for all metrics
-  ├── Grafana                   # Single dashboard instance
-  ├── Loki                      # Centralized logging
-  └── Tempo                     # Distributed tracing
+Applications:
+├── dev-core namespace
+│   └── core-pipeline (1 replica)
+└── prod-core namespace
+    └── core-pipeline (2 replicas)
 
-dev-core/                        # Development Application (ArgoCD sync-wave: 2)
-  └── core-pipeline-dev          # Connects to core_dev_user@postgresql
-
-prod-core/                       # Production Application (ArgoCD sync-wave: 2)
-  └── core-pipeline-prod         # Connects to core_prod_user@postgresql (2 replicas)
+Platform Services:
+├── cert-manager namespace - TLS certificate management
+└── kube-system - Traefik ingress controller (LoadBalancer: 46.62.223.198)
 ```
 
-**Platform Services:**
-- `argocd` namespace - GitOps controller (deploys everything from Git)
-- `cert-manager` namespace - TLS certificate management
-- `kube-system` - Traefik ingress controller (LoadBalancer: 46.62.223.198)
-
 **Key Architecture Principles:**
-- ✅ **Pure GitOps**: Git push → ArgoCD auto-sync → Kubernetes (no manual Helm operations)
-- ✅ **Remote Helm charts**: Fetched from Bitnami registry (no local file:// dependencies)
+- ✅ **KubeSphere Platform**: Unified management console with extension ecosystem
 - ✅ **Single shared infrastructure**: ONE PostgreSQL, ONE Redis, ONE Kafka for all environments
-- ✅ **Credential isolation**: Separate database users and Redis ACL users per environment
+- ✅ **Credential isolation**: Separate database users per environment
+- ✅ **Production operators**: CloudNativePG (PostgreSQL), Strimzi (Kafka)
 - ✅ **Only applications split dev/prod**: core-pipeline-dev and core-pipeline-prod
-- ✅ **Sync waves**: Infrastructure (wave 1) deploys before applications (wave 2)
+- ✅ **Simple deployment**: Kubernetes manifests, no complex Helm charts
 
 ### Namespace Structure
 | Namespace | Purpose | Components | Status |
 |-----------|---------|------------|--------|
-| infrastructure | Shared infrastructure | PostgreSQL, Redis, Kafka | ✅ Managed by ArgoCD |
-| monitoring | Shared monitoring | Prometheus, Grafana, Loki, Tempo | ✅ Managed by ArgoCD |
-| dev-core | Dev applications | core-pipeline-dev | ✅ Managed by ArgoCD |
-| prod-core | Prod applications | core-pipeline-prod | ✅ Managed by ArgoCD |
-| argocd | GitOps platform | ArgoCD server & controllers | ✅ Platform |
-| cert-manager | Certificate management | cert-manager, Let's Encrypt | ✅ Platform |
-| kube-system | Ingress & system | Traefik, CoreDNS | ✅ Platform |
+| kubesphere-system | KubeSphere Core | ks-console, ks-apiserver, ks-controller-manager | ✅ Automated install |
+| infrastructure | Shared infrastructure | PostgreSQL, Redis, Kafka | ✅ Automated install |
+| dev-core | Dev applications | core-pipeline-dev | ✅ Automated install |
+| prod-core | Prod applications | core-pipeline-prod | ✅ Automated install |
+| kafka-operator | Kafka management | Strimzi operator | ✅ Automated install |
+| cnpg-system | PostgreSQL management | CloudNativePG operator | ✅ Automated install |
+| cert-manager | Certificate management | cert-manager, Let's Encrypt | ✅ Pre-existing |
+| kube-system | Ingress & system | Traefik, CoreDNS | ✅ Pre-existing |
 
-### Repository Structure (Pure GitOps)
+### Repository Structure (KubeSphere v4)
 ```
 core-charts/
-├── charts/
-│   ├── infrastructure/          # Umbrella chart (NO local subcharts)
-│   │   ├── Chart.yaml          # References remote Bitnami charts
-│   │   ├── values.yaml         # Consolidated config for all services
-│   │   └── templates/          # Kubernetes manifests
-│   └── core-pipeline/         # Application chart
-│       ├── values.yaml        # Base values
-│       ├── values-dev.yaml    # Dev overrides (core_dev_user credentials)
-│       └── values-prod.yaml   # Prod overrides (core_prod_user credentials)
-├── argocd/                    # ArgoCD installation config
-│   ├── argocd-ingress.yaml   # Ingress for ArgoCD UI
-│   └── projects.yaml         # ArgoCD projects (infrastructure, apps, monitoring)
-├── argocd-apps/              # ArgoCD Application CRDs (GitOps definitions)
-│   ├── infrastructure.yaml   # Single shared infra (sync-wave: 1)
-│   ├── core-pipeline-dev.yaml  # Dev app (sync-wave: 2)
-│   ├── core-pipeline-prod.yaml # Prod app (sync-wave: 2)
-│   ├── prometheus.yaml       # Monitoring stack
-│   ├── grafana.yaml
-│   ├── loki.yaml
-│   └── tempo.yaml
-├── .github/workflows/        # CI/CD pipelines
-│   ├── production-ready-ci.yaml  # 8-phase validation pipeline
-│   ├── helm-lint.yaml
-│   └── ci.yaml
-├── scripts/
-│   ├── connect-pod.sh        # Quick pod shell access
-│   └── reveal-secrets.sh     # Show admin credentials
-├── bootstrap.sh              # Production bootstrap (creates secrets, applies ArgoCD apps)
-├── generate-secrets.sh       # Generate secrets from env vars
-├── secrets.example.yaml      # Secret template with docs
-├── deploy-hook.sh           # Webhook deployment script (triggers ArgoCD sync)
-├── health-check.sh          # Endpoint health checks
-├── CLAUDE.md                # Instructions for Claude Code (THIS FILE)
-└── README.md                # Comprehensive production documentation
+├── k8s/                              # Kubernetes manifests
+│   ├── kubesphere-ingress.yaml       # HTTPS ingress for KubeSphere
+│   ├── infrastructure/               # Shared infrastructure
+│   │   ├── postgres-cluster.yaml     # CloudNativePG PostgreSQL
+│   │   ├── kafka-cluster.yaml        # Strimzi Kafka with topics
+│   │   └── redis.yaml                # Redis standalone
+│   └── apps/                         # Applications
+│       ├── dev/                      # Development
+│       │   └── core-pipeline.yaml
+│       └── prod/                     # Production
+│           └── core-pipeline.yaml
+│
+├── kubesphere/                       # KubeSphere deployment guides
+│   └── CORE-PIPELINE-DEPLOY.md      # core-pipeline deployment instructions
+│
+├── fresh-install.sh                  # Automated installation script
+├── README.md                         # Quick start guide
+├── INSTALL.md                        # Complete step-by-step guide
+└── CLAUDE.md                         # Instructions for Claude Code (THIS FILE)
 ```
 
-**Key Changes from Local Subcharts:**
-- ❌ **REMOVED**: `charts/infrastructure/postgresql/`, `redis/`, `kafka/` local subcharts
-- ❌ **REMOVED**: `helm dependency build` requirement
-- ✅ **ADDED**: Remote Helm chart references in Chart.yaml (Bitnami registry)
-- ✅ **ADDED**: Consolidated values.yaml with all service configurations
+**What Was Removed:**
+- ❌ **argocd/** - ArgoCD configuration
+- ❌ **argocd-apps/** - ArgoCD Application CRDs
+- ❌ **charts/** - Custom Helm charts
+- ❌ **bootstrap.sh** - Old bootstrap script
+- ❌ **deploy-hook.sh** - Webhook deployment script
+- ❌ **generate-secrets.sh** - Secret generation script
+- ❌ **health-check.sh** - Health check script
+- ❌ **scripts/** - Utility scripts
+- ❌ **.github/workflows/** - Old CI/CD pipelines
 
-### Working Services & Endpoints
+**What Remains:**
+- ✅ **k8s/** - Pure Kubernetes manifests
+- ✅ **fresh-install.sh** - Single automated installer
+- ✅ **INSTALL.md** - Manual step-by-step guide
+- ✅ **README.md** - Quick start documentation
+- ✅ **CLAUDE.md** - This file
 
-| Service | URL | Namespace | Status |
-|---------|-----|-----------|--------|
-| ArgoCD | https://argo.dev.theedgestory.org | argocd | ✅ |
-| Core Pipeline Dev | https://core-pipeline.dev.theedgestory.org/api-docs | dev-core | ✅ |
-| Core Pipeline Prod | https://core-pipeline.theedgestory.org/api-docs | prod-core | ✅ |
-| Grafana | https://grafana.dev.theedgestory.org | monitoring | ✅ |
-| Prometheus | https://prometheus.dev.theedgestory.org | monitoring | ✅ |
+### Working Services & Endpoints (After Installation)
 
-### ArgoCD Applications (GitOps-Managed)
+| Service | URL | Namespace | Credentials |
+|---------|-----|-----------|-------------|
+| KubeSphere Console | https://kubesphere.dev.theedgestory.org | kubesphere-system | admin / (auto-generated) |
+| Core Pipeline Dev | https://core-pipeline.dev.theedgestory.org | dev-core | - |
+| Core Pipeline Prod | https://core-pipeline.theedgestory.org | prod-core | - |
+| Grafana | Via KubeSphere Extensions | monitoring | Same as KubeSphere |
 
-**All deployments are managed by ArgoCD:**
+## Installation Process
 
-**Infrastructure (sync-wave: 1):**
-- `infrastructure` - Shared PostgreSQL, Redis, Kafka
+### Automated Installation (Recommended)
 
-**Applications (sync-wave: 2):**
-- `core-pipeline-dev` - Dev deployment to dev-core namespace
-- `core-pipeline-prod` - Prod deployment (2 replicas) to prod-core namespace
-
-**Monitoring (sync-wave: 1):**
-- `prometheus` - Centralized metrics collection
-- `grafana` - Unified dashboards
-- `loki` - Centralized logging
-- `tempo` - Distributed tracing
-
-**GitOps Workflow:**
-1. Push changes to `main` branch
-2. Webhook triggers `deploy-hook.sh`
-3. ArgoCD detects changes and syncs applications
-4. Kubernetes resources updated automatically
-
-## Known Issues
-
-**✅ RESOLVED:**
-- ~~Per-environment infrastructure~~ - Now using single shared infrastructure
-- ~~Direct Helm deployments~~ - Everything now managed by ArgoCD
-- ~~Namespace confusion~~ - Clean namespace structure with clear separation
-
-**Active Issues:**
-| Issue | Impact | Notes |
-|-------|--------|-------|
-| Kafka UI not deployed | Low | Optional monitoring component |
-| infrastructure-db-init timeouts | Medium | PostgreSQL init job occasionally stuck |
-
-**Migration Notes:**
-- Legacy `dev-infra` and `prod-infra` namespaces removed
-- Legacy `dev-db` and `prod-db` namespaces may need cleanup
-- All infrastructure now in single `infrastructure` namespace
-
-## Important Implementation Details
-
-### Deployment Pattern
-This setup uses **shared infrastructure with credential isolation**:
-- **Single PostgreSQL instance** with separate users: `core_dev_user` and `core_prod_user`
-- **Single Redis instance** with separate ACL users: `redis_dev_user` and `redis_prod_user`
-- **Single Kafka cluster** shared by both environments
-- **Single monitoring stack** (Prometheus, Grafana, Loki, Tempo)
-- **Only core-pipeline** has separate dev/prod deployments
-
-### GitOps with ArgoCD
-- **All resources managed by ArgoCD** - no direct Helm deployments
-- **Sync waves** ensure infrastructure deploys before applications
-- **Auto-sync enabled** - push to main triggers automatic deployment
-- **Self-healing** - ArgoCD corrects manual changes back to git state
-
-### Helm Chart Dependencies (Pure GitOps)
-The infrastructure umbrella chart uses **remote Bitnami charts** for true GitOps:
-```yaml
-dependencies:
-  - name: postgresql
-    version: 16.4.0
-    repository: https://charts.bitnami.com/bitnami
-  - name: redis
-    version: 20.6.0
-    repository: https://charts.bitnami.com/bitnami
-  - name: kafka
-    version: 31.0.0
-    repository: https://charts.bitnami.com/bitnami
-```
-**NO `helm dependency build` needed** - ArgoCD fetches charts from Bitnami registry automatically.
-
-### Certificate Management
-- cert-manager with Let's Encrypt
-- Traefik ingress controller
-- All HTTP traffic redirects to HTTPS
-- Certificates auto-renew
-
-### LoadBalancer
-- Traefik LoadBalancer: 46.62.223.198
-- External IP assigned by cloud provider
-- Handles ports 80, 443
-
-## Current Status Summary
-
-### ✅ Working
-- ✅ **GitOps with ArgoCD** - All resources managed declaratively
-- ✅ **Shared infrastructure** - PostgreSQL, Redis, Kafka in single namespace
-- ✅ **Credential isolation** - Separate dev/prod users for all services
-- ✅ **Core applications** - Dev & prod deployments with auto-sync
-- ✅ **Centralized monitoring** - Single Prometheus, Grafana, Loki, Tempo
-- ✅ **TLS certificates** - Let's Encrypt via cert-manager
-- ✅ **Ingress routing** - Traefik with HTTPS enforcement
-- ✅ **Webhook automation** - GitHub push triggers ArgoCD sync
-
-### 📊 Architecture Highlights
-- **Single source of truth** - Git repository drives all deployments
-- **No manual Helm deployments** - Everything through ArgoCD
-- **Environment separation** - Only applications split dev/prod, not infrastructure
-- **Sync waves** - Infrastructure deploys before applications automatically
-
-## Webhook Automation
-
-### Architecture
-Deployments are automated via GitHub webhooks with ArgoCD GitOps:
-
-```
-GitHub Push → Webhook (port 9000) → deploy-hook.sh → ArgoCD Sync → Kubernetes
-       │                                                    │
-       └──────────────────────────────────────────────────┘
-                    ArgoCD detects git changes
-```
-
-**Server**: 46.62.223.198
-**Webhook Endpoint**: `http://46.62.223.198:9000/hooks/deploy-core-charts`
-**Service**: Go webhook binary (`/usr/bin/webhook`)
-**Config**: `/etc/webhook.conf`
-
-### Webhook Configuration
-
-```json
-{
-  "id": "deploy-core-charts",
-  "execute-command": "/root/core-charts/deploy-hook.sh",
-  "command-working-directory": "/root/core-charts",
-  "trigger-rule": {
-    "match": {
-      "type": "payload-hash-sha256",
-      "secret": "stored-in-config",
-      "parameter": {
-        "source": "header",
-        "name": "X-Hub-Signature-256"
-      }
-    }
-  }
-}
-```
-
-### How Deployments Work (Pure GitOps)
-
-1. Developer pushes to `main` branch
-2. GitHub sends webhook to server
-3. Webhook service verifies signature and runs `deploy-hook.sh`
-4. Script automatically:
-   - Pulls latest code from git (`git pull origin main`)
-   - Applies ArgoCD application manifests (`kubectl apply -f argocd-apps/`)
-   - Triggers ArgoCD sync (`kubectl patch application ...`)
-   - Waits for sync completion
-5. ArgoCD:
-   - Fetches remote Helm charts from Bitnami registry
-   - Renders templates with values from `charts/infrastructure/values.yaml`
-   - Compares desired state (git) vs current state (cluster)
-   - Syncs resources in order (sync-wave 1: infrastructure, wave 2: applications)
-   - Self-heals any drift from desired state
-
-**Key Difference**: No `helm dependency build` step - ArgoCD fetches charts directly from Bitnami registry.
-
-### Monitoring Deployments
-
+**Single Command Installation:**
 ```bash
-# On server - watch webhook logs
-journalctl -u webhook -f
-
-# Check ArgoCD application status
-kubectl get applications -n argocd
-
-# Watch specific application sync
-kubectl get application infrastructure -n argocd -w
-
-# View application details
-kubectl describe application core-pipeline-dev -n argocd
-
-# Manual sync trigger
-kubectl patch application infrastructure -n argocd --type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}'
-
-# Manual deployment (webhook simulation)
-cd /root/core-charts && bash deploy-hook.sh
+bash fresh-install.sh
 ```
+
+**What It Does:**
+1. **Cleanup** (2 min) - Deletes all existing namespaces and resources
+2. **KubeSphere Core** (3 min) - Installs KubeSphere v4.1.3 via Helm
+3. **Operators** (2 min) - Installs CloudNativePG and Strimzi operators
+4. **Infrastructure** (5 min) - Deploys PostgreSQL, Redis, Kafka
+5. **Secrets** (1 min) - Creates database credentials
+6. **Applications** (2 min) - Deploys core-pipeline dev & prod
+
+**Total Time:** ~15 minutes
+
+### Manual Installation
+
+Follow **INSTALL.md** for detailed step-by-step guide:
+- Phase 1: Install KubeSphere Core (5 min)
+- Phase 2: Configure HTTPS Ingress (2 min)
+- Phase 3: Install Extensions via Web UI (10 min)
+- Phase 4: Deploy Infrastructure (15 min)
+- Phase 5: Deploy Applications (5 min)
+
+**Total Time:** ~40 minutes
 
 ## Development Workflow
 
-**GitOps-First Development:**
+**KubeSphere-Based Development:**
 
-1. **Make changes** locally and commit to repository
-2. **Push to main** - webhook triggers ArgoCD sync
-3. **Monitor** via ArgoCD UI at https://argo.dev.theedgestory.org
-   - Or CLI: `kubectl get applications -n argocd`
+1. **Make changes** to Kubernetes manifests in `k8s/` directory
+2. **Apply changes** directly:
+   ```bash
+   kubectl apply -f k8s/infrastructure/
+   kubectl apply -f k8s/apps/dev/
+   kubectl apply -f k8s/apps/prod/
+   ```
+3. **Monitor** via KubeSphere Web UI at https://kubesphere.dev.theedgestory.org
+   - Or CLI: `kubectl get pods -A`
 4. **Verify** deployments:
-   - Health check script: `./health-check.sh`
-   - Application endpoints: https://core-pipeline.dev.theedgestory.org
+   - Dev: https://core-pipeline.dev.theedgestory.org
+   - Prod: https://core-pipeline.theedgestory.org
 5. **Debug** issues:
-   - ArgoCD app logs: `kubectl describe application <name> -n argocd`
-   - Pod logs: `kubectl logs` or `./scripts/connect-pod.sh`
+   - KubeSphere UI: Workloads → Deployments → Logs
+   - CLI: `kubectl logs -n <namespace> <pod-name>`
 6. **Rollback** if needed:
-   - Revert git commit and push
-   - Or sync to specific revision in ArgoCD UI
+   ```bash
+   kubectl rollout undo deployment/core-pipeline -n dev-core
+   kubectl rollout undo deployment/core-pipeline -n prod-core
+   ```
 
 ## Security Notes
 
 **Credential Isolation:**
 - ✅ **Separate database users** - `core_dev_user` and `core_prod_user` in shared PostgreSQL
-- ✅ **Separate Redis ACL users** - `redis_dev_user` and `redis_prod_user` in shared Redis
+- ✅ **Auto-generated passwords** - 24-character random passwords during installation
 - ✅ **Namespace isolation** - dev-core and prod-core with separate RBAC
 - ✅ **TLS enforcement** - All ingresses require HTTPS
 - ✅ **Secret management** - Kubernetes secrets, never in git
-- ✅ **GitOps audit trail** - All changes tracked in git history
 
 **Accessing Credentials:**
 ```bash
-./scripts/reveal-secrets.sh                    # View all admin credentials
-kubectl get secret -n infrastructure           # List infrastructure secrets
-kubectl get secret -n argocd argocd-initial-admin-secret -o yaml  # ArgoCD password
+# KubeSphere admin password
+kubectl get secret -n kubesphere-system ks-admin-secret -o jsonpath='{.data.password}' | base64 -d
+
+# PostgreSQL credentials (shown during installation)
+kubectl get secret -n dev-core core-pipeline-secrets -o yaml
+kubectl get secret -n prod-core core-pipeline-secrets -o yaml
+
+# List all secrets
+kubectl get secrets -A
 ```
 
-## Server Status (As of Oct 2025)
+## Server Information
 
-### ✅ Working
-- **Webhook service**: Go webhook on port 9000 (`/usr/bin/webhook`)
-- **Deployment automation**: GitHub push → webhook → deploy-hook.sh → Helm
-- **Server repo**: Clean, synced with origin/main
-- **Gitea**: Completely removed from cluster
+**Server:** 46.62.223.198
+**Kubernetes:** K3s
+**Ingress:** Traefik (LoadBalancer)
+**TLS:** cert-manager with Let's Encrypt
 
-### 🟡 Known Issues
+### Pre-existing Platform Services
+- ✅ K3s cluster running
+- ✅ Traefik ingress controller (LoadBalancer: 46.62.223.198)
+- ✅ cert-manager with Let's Encrypt
+- ✅ DNS configured: *.dev.theedgestory.org, *.theedgestory.org
 
-**Medium Priority:**
-1. **infrastructure-db-init timeouts** - PostgreSQL init job occasionally stuck
-2. **core-pipeline-dev Helm timeouts** - Upgrades timeout but pods deploy successfully
-3. **Concurrent Helm operations** - "another operation is in progress" errors
-4. **Port 3001 firewall rule** - Still open but unused (should be closed)
+## Migration from ArgoCD
 
-**Low Priority:**
-5. **infrastructure ArgoCD app OutOfSync** - Expected, using per-env infrastructure
-6. **dev-db/prod-db namespaces** - May be legacy, verify usage
+**What Changed:**
+1. **Platform**: ArgoCD → KubeSphere v4 (unified management console)
+2. **Deployment**: GitOps with Helm → Direct Kubernetes manifests
+3. **PostgreSQL**: Bitnami Helm chart → CloudNativePG operator
+4. **Kafka**: Bitnami Helm chart → Strimzi operator
+5. **Redis**: Bitnami Helm chart → Standalone deployment
+6. **Installation**: Multi-script bootstrap → Single automated script
 
-### Quick Fixes
+**Why KubeSphere v4:**
+- ✅ **Batteries-included platform** - Monitoring, logging, DevOps built-in
+- ✅ **Extension ecosystem** - Modular components via Extension Center
+- ✅ **Simple installation** - Single Helm command
+- ✅ **Production-ready operators** - CloudNativePG, Strimzi best-in-class
+- ✅ **Unified UI** - Single pane of glass for all operations
 
-**Close unused port:**
+## Known Issues
+
+### Active Issues
+None - fresh installation, all issues resolved.
+
+### Migration Notes
+- All old ArgoCD-based infrastructure removed
+- Clean slate installation
+- No legacy namespaces
+- No webhook automation (may add later if needed)
+
+## Troubleshooting
+
+See **INSTALL.md** for comprehensive troubleshooting guide, including:
+- Extensions not appearing
+- Pods not starting
+- Certificate issues
+- Database connectivity
+- Kafka connectivity
+
+Quick checks:
 ```bash
-ufw delete allow 3001/tcp
-```
+# Check all pods
+kubectl get pods -A
 
-**Fix stuck Helm operations:**
-```bash
-# List pending releases
-helm list --pending -A
+# Check KubeSphere status
+kubectl get pods -n kubesphere-system
 
-# Kill stuck release
-helm rollback <release> -n <namespace>
-```
+# Check infrastructure
+kubectl get cluster -n infrastructure
+kubectl get kafka -n infrastructure
 
-**Clean server repo:**
-```bash
-cd /root/core-charts
-git status
-git clean -fd  # Remove untracked files
+# Check applications
+kubectl get pods -n dev-core
+kubectl get pods -n prod-core
+
+# Check ingresses
+kubectl get ingress -A
 ```

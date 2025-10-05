@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dev-core
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-pipeline
+  namespace: dev-core
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: core-pipeline
+  template:
+    metadata:
+      labels:
+        app: core-pipeline
+    spec:
+      containers:
+      - name: core-pipeline
+        image: ghcr.io/uz0/core-pipeline:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "development"
+        - name: POSTGRES_HOST
+          value: "infrastructure-postgres-rw.infrastructure.svc.cluster.local"
+        - name: POSTGRES_PORT
+          value: "5432"
+        - name: POSTGRES_USER
+          value: "core_dev_user"
+        - name: POSTGRES_DB
+          value: "core_pipeline_dev"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: core-pipeline-secrets
+              key: POSTGRES_PASSWORD_DEV
+        - name: KAFKA_BROKERS
+          value: "infrastructure-kafka-kafka-bootstrap.infrastructure.svc.cluster.local:9092"
+        - name: REDIS_HOST
+          value: "infrastructure-redis.infrastructure.svc.cluster.local"
+        - name: REDIS_PORT
+          value: "6379"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-pipeline
+  namespace: dev-core
+spec:
+  selector:
+    app: core-pipeline
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: core-pipeline
+  namespace: dev-core
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - core-pipeline.dev.theedgestory.org
+      secretName: core-pipeline-dev-tls
+  rules:
+    - host: core-pipeline.dev.theedgestory.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: core-pipeline
+                port:
+                  number: 80

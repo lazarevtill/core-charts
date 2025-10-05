@@ -1,0 +1,40 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: infrastructure-postgres
+  namespace: infrastructure
+spec:
+  instances: 1
+
+  postgresql:
+    parameters:
+      max_connections: "200"
+      shared_buffers: "256MB"
+
+  bootstrap:
+    initdb:
+      database: postgres
+      owner: postgres
+      postInitSQL:
+        - CREATE DATABASE core_pipeline_dev;
+        - CREATE USER core_dev_user WITH PASSWORD 'dev_password_CHANGE_ME';
+        - GRANT ALL PRIVILEGES ON DATABASE core_pipeline_dev TO core_dev_user;
+        - CREATE DATABASE core_pipeline_prod;
+        - CREATE USER core_prod_user WITH PASSWORD 'prod_password_CHANGE_ME';
+        - GRANT ALL PRIVILEGES ON DATABASE core_pipeline_prod TO core_prod_user;
+
+  storage:
+    size: 10Gi
+    storageClass: local-path
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+  monitoring:
+    enabled: true
+    podMonitorEnabled: true
