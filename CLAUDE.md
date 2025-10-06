@@ -239,6 +239,20 @@ kubectl patch application infrastructure -n argocd --type merge -p '{"operation"
 
 ## Security Notes
 
+**Google OAuth2 Authentication:**
+- ✅ **OAuth2 Proxy** - All services protected with Google login
+- ✅ **Whitelist** - Only `dcversus@gmail.com` allowed
+- ✅ **Cookie domain** - `.theedgestory.org` (single sign-on across all services)
+- ✅ **Protected services** - ArgoCD, Grafana, Kafka UI, MinIO
+- ✅ **Admin access only** - No default admin passwords, all via OAuth
+
+**Deploying OAuth2:**
+```bash
+export GOOGLE_CLIENT_ID='your-google-client-id'
+export GOOGLE_CLIENT_SECRET='your-google-client-secret'
+bash setup-oauth2.sh
+```
+
 **Credential Isolation:**
 - ✅ **Separate database users** - `core_dev_user` and `core_prod_user` in shared PostgreSQL
 - ✅ **Auto-generated passwords** - 24-character random passwords during installation
