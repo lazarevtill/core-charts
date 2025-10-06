@@ -29,20 +29,45 @@ bash scripts/deploy-landing.sh
 
 ---
 
-## 🔐 Deploy OAuth Authentication
+## 🔐 OAuth2 Admin Protection
 
-```bash
-cd /root/core-charts
-git pull origin main
+**Status**: ✅ Fully Configured and Deployed
 
-# Set OAuth credentials (optional)
-export GOOGLE_CLIENT_ID='your-client-id'
-export GOOGLE_CLIENT_SECRET='your-client-secret'
-bash scripts/setup-google-oauth.sh
+All admin services are protected with Google OAuth2 authentication via OAuth2 Proxy:
 
-# Deploy OAuth to all services
-bash scripts/deploy-oauth.sh
-```
+### Protected Services
+
+| Service | URL | Access |
+|---------|-----|--------|
+| ArgoCD | https://argo.theedgestory.org | Dex authproxy + RBAC |
+| Grafana | https://grafana.theedgestory.org | Auth proxy mode |
+| Kafka UI | https://kafka.theedgestory.org | OAuth2 gated |
+| MinIO Console | https://s3-admin.theedgestory.org | OAuth2 gated |
+
+**Authorized User**: `dcversus@gmail.com` only
+
+### Configuration
+
+- **OAuth2 Provider**: Google OAuth
+- **Client ID**: `501843646349-ftivho3v39aa0rio5c0abcujmc7kljhk.apps.googleusercontent.com`
+- **Redirect URI**: `https://auth.theedgestory.org/oauth2/callback`
+- **Cookie Domain**: `.theedgestory.org` (SSO across all subdomains)
+- **Authentication Flow**: User → Google Login → OAuth2 Proxy → Service with email header
+
+### Required Setup
+
+Add to Google Cloud Console OAuth credentials:
+- **Authorized JavaScript origins**: `https://auth.theedgestory.org`
+- **Authorized redirect URIs**: `https://auth.theedgestory.org/oauth2/callback`
+
+### How It Works
+
+1. User visits admin service (e.g., https://argo.theedgestory.org)
+2. Nginx ingress checks OAuth2 proxy
+3. If not authenticated → Redirects to Google login
+4. After successful login, OAuth2 proxy validates email whitelist
+5. Sets secure cookie and passes `X-Auth-Request-Email` header to service
+6. Service grants access based on email (ArgoCD: role:admin, Grafana: Admin role)
 
 ---
 

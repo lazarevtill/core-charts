@@ -115,3 +115,39 @@ kafka:
   extraEnvVars:
     - name: KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE
       value: "true"
+
+# Kafka UI - Web interface for Kafka management
+kafkaUI:
+  enabled: true
+
+  image:
+    repository: ghcr.io/kafbat/kafka-ui
+    tag: latest
+
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 250m
+
+  kafka:
+    clusterName: "kafka-cluster"
+    bootstrapServers: "kafka-cluster-kafka-bootstrap.infrastructure.svc.cluster.local:9092"
+
+  # Google OAuth2 SSO Configuration (Layer 2 - Application Level)
+  # IMPORTANT: OAuth2 credentials are stored in Kubernetes Secret (kafka-ui-oauth2-secret)
+  # Secret must be created manually on the cluster (not committed to Git for security)
+  oauth2:
+    # Public configuration (safe to commit)
+    scope: "openid,profile,email"
+    redirectUri: "https://kafka.theedgestory.org/login/oauth2/code/google"
+    # CRITICAL: Only allow dcversus@gmail.com (regex pattern)
+    allowedEmailPattern: "^dcversus@gmail\\.com$"
+
+    # Secret reference (actual credentials stored in Kubernetes Secret)
+    existingSecret: "kafka-ui-oauth2-secret"
+
+  ingress:
+    host: "kafka.theedgestory.org"
