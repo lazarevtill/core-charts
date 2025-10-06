@@ -59,10 +59,9 @@ externalSecrets:
 
 ingress:
   enabled: true
-  className: traefik
+  className: nginx
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    nginx.ingress.kubernetes.io/service-upstream: "true"
   hosts:
     - host: core-pipeline.dev.theedgestory.org
       paths:
