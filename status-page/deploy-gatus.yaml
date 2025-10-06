@@ -1,0 +1,167 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gatus-config
+  namespace: status
+data:
+  config.yaml: |
+    metrics: true
+    storage:
+      type: postgres
+      path: "postgres://gatus_user:gatus-password-2024@postgresql-0.postgresql.infrastructure.svc.cluster.local:5432/gatus?sslmode=disable"
+
+    endpoints:
+      - name: Core Pipeline (Production)
+        group: Applications
+        url: "https://core-pipeline.theedgestory.org/health"
+        interval: 60s
+        conditions:
+          - "[STATUS] == 200"
+          - "[RESPONSE_TIME] < 1000"
+        alerts:
+          - type: discord
+            enabled: false
+
+      - name: Core Pipeline (Development)
+        group: Applications
+        url: "https://core-pipeline-dev.theedgestory.org/health"
+        interval: 60s
+        conditions:
+          - "[STATUS] == 200"
+          - "[RESPONSE_TIME] < 1000"
+
+      - name: PostgreSQL
+        group: Infrastructure
+        url: "tcp://postgresql-0.postgresql.infrastructure.svc.cluster.local:5432"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+
+      - name: Redis
+        group: Infrastructure
+        url: "tcp://redis-0.redis.infrastructure.svc.cluster.local:6379"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+
+      - name: Kafka
+        group: Infrastructure
+        url: "tcp://kafka-cluster-kafka-bootstrap.infrastructure.svc.cluster.local:9092"
+        interval: 60s
+        conditions:
+          - "[CONNECTED] == true"
+
+      - name: Prometheus
+        group: Infrastructure
+        url: "http://prometheus.monitoring.svc.cluster.local:9090/-/healthy"
+        interval: 60s
+        conditions:
+          - "[STATUS] == 200"
+
+      - name: Hetzner Cloud
+        group: External
+        url: "https://status.hetzner.com"
+        interval: 300s
+        conditions:
+          - "[STATUS] == 200"
+          - "[RESPONSE_TIME] < 3000"
+
+      - name: GitHub API
+        group: External
+        url: "https://api.github.com/status"
+        interval: 300s
+        conditions:
+          - "[STATUS] == 200"
+
+    ui:
+      title: "The Edge Story - System Status"
+      header: "The Edge Story"
+      description: "Real-time status and uptime monitoring powered by Gatus"
+      logo: ""
+      link: ""
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gatus
+  namespace: status
+  labels:
+    app: gatus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: gatus
+  template:
+    metadata:
+      labels:
+        app: gatus
+    spec:
+      containers:
+      - name: gatus
+        image: twinproduction/gatus:v5.8.0
+        ports:
+        - containerPort: 8080
+          name: http
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: config
+        configMap:
+          name: gatus-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gatus
+  namespace: status
+  labels:
+    app: gatus
+spec:
+  selector:
+    app: gatus
+  ports:
+  - port: 80
+    targetPort: 8080
+    name: http
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gatus
+  namespace: status
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: status.theedgestory.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: gatus
+            port:
+              number: 80

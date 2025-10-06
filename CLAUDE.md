@@ -26,19 +26,35 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### ✅ LATEST UPDATE (Oct 6, 2025)
 
+**Landing Page for theedgestory.org (100%)**
+- ✅ Main landing page with cosmic sci-fi design
+- ✅ Privacy Policy (GDPR compliant, IP ownership disclosure)
+- ✅ Terms of Service (comprehensive IP rights transfer)
+- ✅ Kubernetes deployment (Nginx, TLS, WWW redirect)
+- ✅ All scripts moved to /scripts directory
+- ✅ All unauthorized .md files removed
+
+**Deploy Landing Page:**
+```bash
+cd /root/core-charts
+git pull origin main
+cd landing
+bash ../scripts/create-configmap.sh
+kubectl apply -f landing-configmap.yaml
+kubectl apply -f deploy-landing.yaml
+```
+
 **Observability & Authentication (100%)**
 - ✅ Grafana deployment annotations with Prometheus queries
 - ✅ Clickable log links in deployment annotations (Loki integration)
 - ✅ Google OAuth configured for all services (Grafana, Kafka UI, MinIO, Kubero)
-- ✅ Automated OAuth deployment script (`deploy-oauth.sh`)
-- ✅ Comprehensive OAuth documentation (`auth/OAUTH_DEPLOYMENT_GUIDE.md`)
+- ✅ OAuth deployment script in /scripts
 
-**Ready to Deploy:**
+**Deploy OAuth:**
 ```bash
-# On server (46.62.223.198):
 cd /root/core-charts
 git pull origin main
-bash deploy-oauth.sh
+bash scripts/deploy-oauth.sh
 ```
 
 ### ✅ COMPLETED (Fresh KubeSphere v4 Setup)

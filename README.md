@@ -1,8 +1,40 @@
-# KubeSphere v4 Platform - Complete Kubernetes Setup
+# The Edge Story - Production Infrastructure
 
-**Platform**: KubeSphere v4.1.3 (LuBan Architecture)
-**Kubernetes**: K3s on Ubuntu
-**Applications**: core-pipeline (dev + prod)
+**Platform**: KubeSphere v4.1.3 on K3s
+**Main Site**: https://theedgestory.org
+**Applications**: core-pipeline (dev + prod), monitoring, OAuth services
+
+---
+
+## 🌌 Deploy Landing Page
+
+```bash
+cd /root/core-charts
+git pull origin main
+bash scripts/deploy-landing.sh
+```
+
+**URLs after deployment:**
+- https://theedgestory.org
+- https://theedgestory.org/privacy-policy.html
+- https://theedgestory.org/terms-of-service.html
+
+---
+
+## 🔐 Deploy OAuth Authentication
+
+```bash
+cd /root/core-charts
+git pull origin main
+
+# Set OAuth credentials (optional)
+export GOOGLE_CLIENT_ID='your-client-id'
+export GOOGLE_CLIENT_SECRET='your-client-secret'
+bash scripts/setup-google-oauth.sh
+
+# Deploy OAuth to all services
+bash scripts/deploy-oauth.sh
+```
 
 ---
 

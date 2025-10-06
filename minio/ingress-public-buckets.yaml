@@ -1,0 +1,45 @@
+---
+# Middleware to add Cloudflare-friendly cache headers
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: minio-cache-headers
+  namespace: minio
+spec:
+  headers:
+    customResponseHeaders:
+      Cache-Control: "public, max-age=31536000, immutable"
+      X-Content-Type-Options: "nosniff"
+      Access-Control-Allow-Origin: "*"
+      Access-Control-Allow-Methods: "GET, HEAD, OPTIONS"
+
+---
+# Public bucket access at s3.theedgestory.org/* (for uploaded files)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio-public-buckets
+  namespace: minio
+  annotations:
+    cert-manager.io/cluster-issuer: theedgestory
+    kubernetes.io/tls-acme: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: minio-minio-cache-headers@kubernetescrd
+    # Cloudflare will automatically cache based on Cache-Control headers
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: s3.theedgestory.org
+    http:
+      paths:
+      # Public bucket access (files)
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: minio-tenant-hl
+            port:
+              number: 9000
+  tls:
+  - hosts:
+    - s3.theedgestory.org
+    secretName: minio-s3-tls
