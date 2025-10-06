@@ -152,27 +152,6 @@ kafkaUI:
   ingress:
     host: "kafka.theedgestory.org"
 
-# Note: ArgoCD ingress and config are NOT managed here
-# ArgoCD manages itself and is deployed separately
-# See argocd-config/ directory for manual configuration
-
-# Grafana - Monitoring Dashboard
-grafana:
-  ingress:
-    enabled: true
-    host: "grafana.theedgestory.org"
-
-  externalLinks:
-    enabled: true
-
-# Prometheus - Metrics Collection
-prometheus:
-  ingress:
-    enabled: true
-    host: "prometheus.theedgestory.org"
-
-# Gatus - Status Page
-gatus:
-  ingress:
-    enabled: true
-    host: "status.theedgestory.org"
+# Note: ArgoCD, Grafana, Prometheus, and other platform services are NOT managed here
+# These are deployed separately or via their own Helm charts
+# See argocd-config/ directory for manual ArgoCD configuration

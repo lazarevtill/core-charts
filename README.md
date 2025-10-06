@@ -13,19 +13,49 @@ Platform: **KubeSphere v4.1.3 on K3s**
 
 ```bash
 # 1. Clone repository on your K3s server
+ssh root@46.62.223.198
 git clone https://github.com/uz0/core-charts.git
 cd core-charts
 
-# 2. Create OAuth2 secret for Kafka UI
+# 2. Apply ArgoCD ingress (manual, not Helm-managed to avoid circular dependency)
+kubectl apply -f argocd-config/argocd-ingress.yaml
+
+# 3. Add navigation links to ArgoCD UI
+kubectl create configmap argocd-cm -n argocd --dry-run=client -o yaml | kubectl apply -f -
+kubectl patch configmap argocd-cm -n argocd --type merge --patch '
+data:
+  ui.externalLinks: |
+    - title: "🏠 The Edge Story"
+      url: "https://theedgestory.org"
+    - title: "✅ Status Page"
+      url: "https://status.theedgestory.org"
+    - title: "📊 Grafana"
+      url: "https://grafana.theedgestory.org"
+    - title: "📈 Prometheus"
+      url: "https://prometheus.theedgestory.org"
+    - title: "📨 Kafka UI"
+      url: "https://kafka.theedgestory.org"
+    - title: "💾 MinIO Console"
+      url: "https://s3-admin.theedgestory.org"
+    - title: "🚀 Dev Pipeline"
+      url: "https://core-pipeline.dev.theedgestory.org/api-docs"
+    - title: "✨ Prod Pipeline"
+      url: "https://core-pipeline.theedgestory.org/api-docs"
+'
+kubectl rollout restart deployment argocd-server -n argocd
+
+# 4. Create OAuth2 secret for Kafka UI
 bash create-kafka-ui-oauth2-secret.sh
 
-# 3. Deploy ArgoCD applications
+# 5. Deploy ArgoCD applications
 kubectl apply -f argocd-apps/
 
-# 4. ArgoCD will auto-sync and deploy everything from Git
+# 6. ArgoCD will auto-sync and deploy everything from Git
 ```
 
 **That's it!** ArgoCD watches the Git repository and automatically deploys changes.
+
+**Why ArgoCD config is separate:** ArgoCD's ingress and ConfigMaps are NOT managed by the infrastructure Helm chart to avoid circular dependencies (ArgoCD cannot manage its own configuration via a chart it deploys).
 
 ---
 
@@ -95,8 +125,8 @@ git push origin main
 ```
 
 **Infrastructure services:**
-- PostgreSQL 18.0.7 (Bitnami) - Shared database with dev/prod isolation
-- Redis 23.0.10 (Bitnami) - Cache and sessions
+- PostgreSQL 16.4.0 (Bitnami) - Shared database with dev/prod isolation
+- Redis 20.6.0 (Bitnami) - Cache and sessions
 - Kafka UI - Web interface for Kafka management
 
 ---
