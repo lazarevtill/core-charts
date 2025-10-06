@@ -4,6 +4,12 @@ set -e
 echo "🔄 ArgoCD State Cleanup & Sync Script"
 echo "======================================"
 
+# Pull latest code
+echo ""
+echo "0️⃣ Pulling latest code from GitHub..."
+git pull origin main
+echo "   ✅ Code updated"
+
 # Delete landing page application (migrated to GitHub Pages)
 echo ""
 echo "1️⃣ Deleting landing page application..."
@@ -20,13 +26,13 @@ kubectl delete service infrastructure-redis -n infrastructure --ignore-not-found
 kubectl delete configmap redis-config -n infrastructure --ignore-not-found=true 2>/dev/null || true
 echo "   ✅ Old resources cleaned"
 
-# Apply updated ArgoCD applications
+# CRITICAL: Apply updated ArgoCD applications with correct Helm chart paths
 echo ""
-echo "3️⃣ Applying updated ArgoCD applications..."
+echo "3️⃣ Applying updated ArgoCD applications (Helm chart paths)..."
 kubectl apply -f argocd-apps/infrastructure.yaml
 kubectl apply -f argocd-apps/core-pipeline-dev.yaml
 kubectl apply -f argocd-apps/core-pipeline-prod.yaml
-echo "   ✅ ArgoCD applications updated"
+echo "   ✅ ArgoCD applications updated (now pointing to charts/ not k8s/)"
 
 # Wait a moment for ArgoCD to detect changes
 echo ""
