@@ -2,7 +2,11 @@
 set -e
 
 # CRITICAL: Set kubeconfig path
-export KUBECONFIG=~/.kube/config
+if [ -f /etc/rancher/k3s/k3s.yaml ]; then
+  export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+elif [ -f ~/.kube/config ]; then
+  export KUBECONFIG=~/.kube/config
+fi
 
 echo "🔧 Force Update Infrastructure App to Helm Chart"
 echo "================================================"

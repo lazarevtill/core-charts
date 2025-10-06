@@ -1,8 +1,18 @@
 #!/bin/bash
 set -e
 
-# CRITICAL: Set kubeconfig path
-export KUBECONFIG=~/.kube/config
+# CRITICAL: Set kubeconfig path for K3s
+if [ -f /etc/rancher/k3s/k3s.yaml ]; then
+  export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+elif [ -f ~/.kube/config ]; then
+  export KUBECONFIG=~/.kube/config
+else
+  echo "❌ Error: Could not find kubeconfig"
+  echo "Checked:"
+  echo "  - /etc/rancher/k3s/k3s.yaml (K3s default)"
+  echo "  - ~/.kube/config (standard location)"
+  exit 1
+fi
 
 echo "🔍 Kubernetes OAuth2 Investigation"
 echo "===================================="
