@@ -155,10 +155,10 @@ kafkaUI:
 # Cloudflare Tunnel - Zero-trust networking (disabled by default)
 # Run setup-cloudflare-tunnel.sh to create tunnel and enable
 cloudflared:
-  enabled: false  # Set to true after running setup-cloudflare-tunnel.sh
-  tunnelId: ""    # Will be set by setup script
-  credentialsSecret: cloudflared-credentials  # Created by setup script
-  replicas: 2     # High availability
+  enabled: true
+  tunnelId: "6c01bbbf-3488-4182-b17b-3ac004a02d99"
+  credentialsSecret: cloudflared-credentials
+  replicas: 2
 
   image:
     repository: cloudflare/cloudflared
