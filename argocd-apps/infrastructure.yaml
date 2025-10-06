@@ -22,6 +22,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-    syncStrategy:
-      hook:
-        force: true
