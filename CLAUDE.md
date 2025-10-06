@@ -33,8 +33,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ✅ Kubernetes deployment (Nginx, Ingress, WWW redirect)
 - ✅ All scripts moved to /scripts directory
 - ✅ All unauthorized .md files removed
-- ✅ Configured for Cloudflare Tunnel (no Let's Encrypt certs needed)
-- ✅ TLS termination handled by Cloudflare
+- ✅ Let's Encrypt TLS certificates (auto-renewal via cert-manager)
+- ✅ HTTPS enabled with automatic certificate management
 
 **Deploy Landing Page:**
 ```bash
@@ -45,9 +45,9 @@ bash scripts/deploy-landing.sh
 
 **Architecture:**
 - Nginx serves static HTML from ConfigMap
-- Traefik Ingress routes traffic (HTTP only, no TLS)
-- Cloudflare Tunnel handles TLS termination
-- No certificate management needed on cluster side
+- Traefik Ingress routes traffic with TLS
+- Let's Encrypt certificates via cert-manager
+- Automatic HTTPS redirect and www subdomain redirect
 
 **Observability & Authentication (100%)**
 - ✅ Grafana deployment annotations with Prometheus queries
