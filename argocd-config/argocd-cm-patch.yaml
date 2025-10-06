@@ -1,27 +1,7 @@
-{{- if .Values.argocd.externalLinks.enabled }}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: argocd-cm
-  namespace: argocd
-  labels:
-    app.kubernetes.io/name: argocd-cm
-    app.kubernetes.io/part-of: argocd
-data:
-  # Dex authproxy connector for OAuth2 Proxy
-  accounts.dcversus: "apiKey,login"
-  admin.enabled: "true"
-  users.anonymous.enabled: "true"
-  dex.config: |
-    connectors:
-    - type: authproxy
-      id: oauth2-proxy
-      name: Google OAuth2
-      config:
-        userHeader: X-Auth-Request-Email
-        emailHeader: X-Auth-Request-Email
-        groupHeader: X-Auth-Request-Groups
+# ArgoCD ConfigMap Patch
+# Apply with: kubectl patch configmap argocd-cm -n argocd --patch-file argocd-cm-patch.yaml
 
+data:
   # External links (pinned to top navigation)
   ui.externalLinks: |
     - title: "🏠 The Edge Story"
@@ -40,4 +20,6 @@ data:
       url: "https://core-pipeline.dev.theedgestory.org/api-docs"
     - title: "✨ Prod Pipeline"
       url: "https://core-pipeline.theedgestory.org/api-docs"
-{{- end }}
+
+  # Dex OAuth2 configuration - keep existing settings, just add external links
+  # Do not modify dex.config or other existing settings

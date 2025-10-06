@@ -152,17 +152,9 @@ kafkaUI:
   ingress:
     host: "kafka.theedgestory.org"
 
-# ArgoCD - GitOps Platform
-argocd:
-  ingress:
-    enabled: true
-    host: "argo.theedgestory.org"
-
-  externalLinks:
-    enabled: true
-
-  rbac:
-    enabled: true
+# Note: ArgoCD ingress and config are NOT managed here
+# ArgoCD manages itself and is deployed separately
+# See argocd-config/ directory for manual configuration
 
 # Grafana - Monitoring Dashboard
 grafana:
