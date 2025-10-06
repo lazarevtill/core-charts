@@ -22,7 +22,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **KubeSphere v4 Platform** - Production Kubernetes infrastructure running on K3s with KubeSphere v4.1.3 (LuBan Architecture). Single shared infrastructure (PostgreSQL via CloudNativePG, Redis standalone, Kafka via Strimzi) with credential isolation per environment. Only core-pipeline applications split dev/prod.
 
-## 🎯 Current Status (Oct 5, 2025)
+## 🎯 Current Status (Oct 6, 2025)
+
+### ✅ LATEST UPDATE (Oct 6, 2025)
+
+**Observability & Authentication (100%)**
+- ✅ Grafana deployment annotations with Prometheus queries
+- ✅ Clickable log links in deployment annotations (Loki integration)
+- ✅ Google OAuth configured for all services (Grafana, Kafka UI, MinIO, Kubero)
+- ✅ Automated OAuth deployment script (`deploy-oauth.sh`)
+- ✅ Comprehensive OAuth documentation (`auth/OAUTH_DEPLOYMENT_GUIDE.md`)
+
+**Ready to Deploy:**
+```bash
+# On server (46.62.223.198):
+cd /root/core-charts
+git pull origin main
+bash deploy-oauth.sh
+```
 
 ### ✅ COMPLETED (Fresh KubeSphere v4 Setup)
 
