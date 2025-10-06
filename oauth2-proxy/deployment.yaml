@@ -122,6 +122,7 @@ metadata:
   namespace: oauth2-proxy
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
 spec:
   ingressClassName: nginx
   tls:

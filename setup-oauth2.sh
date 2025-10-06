@@ -45,7 +45,14 @@ echo "4️⃣ Waiting for OAuth2 Proxy to be ready..."
 kubectl wait --for=condition=available --timeout=60s deployment/oauth2-proxy -n oauth2-proxy || true
 
 echo ""
-echo "5️⃣ Adding auth annotations to ingresses..."
+echo "5️⃣ Making sure OAuth2 Proxy ingress has NO auth (prevent infinite redirect)..."
+kubectl annotate ingress oauth2-proxy -n oauth2-proxy \
+  nginx.ingress.kubernetes.io/auth-url- \
+  nginx.ingress.kubernetes.io/auth-signin- \
+  --overwrite 2>/dev/null || true
+
+echo ""
+echo "6️⃣ Adding auth annotations to service ingresses..."
 
 # ArgoCD
 kubectl annotate ingress argocd-server -n argocd \
