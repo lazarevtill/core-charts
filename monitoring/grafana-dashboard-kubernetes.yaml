@@ -1,8 +1,0 @@
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: grafana-dashboard-kubernetes
-  namespace: monitoring
-binaryData:
-  kubernetes-cluster.json: $(base64 -i /Users/dcversus/conductor/core-charts/kubernetes-cluster-dashboard.json)
