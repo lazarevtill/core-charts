@@ -22,31 +22,31 @@ data:
     ingress:
       # Admin Services
       - hostname: argo.theedgestory.org
-        service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
       - hostname: kafka.theedgestory.org
-        service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
       - hostname: grafana.theedgestory.org
-        service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
       - hostname: prometheus.theedgestory.org
-        service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
       - hostname: status.theedgestory.org
-        service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
       - hostname: s3-admin.theedgestory.org
-        service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
 
       # Application Services
       - hostname: core-pipeline.dev.theedgestory.org
-        service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
       - hostname: core-pipeline.theedgestory.org
-        service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
 
       # OAuth2 Proxy
       - hostname: auth.theedgestory.org
-        service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
 
       # Main website
       - hostname: theedgestory.org
-        service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
+        service: http://ingress-nginx-controller.ingress-nginx.svc.cluster.local:80
 
       # Catch-all rule (required)
       - service: http_status:404
