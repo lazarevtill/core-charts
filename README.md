@@ -9,7 +9,7 @@ Platform: **KubeSphere v4.1.3 on K3s**
 
 ## 🚀 Quick Start
 
-### First Time Setup
+### First Time Setup (5 Minutes)
 
 ```bash
 # 1. Clone repository on your K3s server
@@ -17,45 +17,38 @@ ssh root@46.62.223.198
 git clone https://github.com/uz0/core-charts.git
 cd core-charts
 
-# 2. Apply ArgoCD ingress (manual, not Helm-managed to avoid circular dependency)
+# 2. Setup Cloudflare Tunnel (zero-trust networking)
+bash setup-cloudflare-tunnel.sh
+# This will:
+# - Install cloudflared CLI
+# - Open browser for Cloudflare authentication
+# - Create tunnel and deploy to Kubernetes
+# - Provide DNS routing commands
+
+# 3. Route all domains through tunnel
+bash /tmp/route-all-domains.sh k8s-tunnel
+
+# 4. Apply ArgoCD ingress
 kubectl apply -f argocd-config/argocd-ingress.yaml
 
-# 3. Add navigation links to ArgoCD UI
-kubectl create configmap argocd-cm -n argocd --dry-run=client -o yaml | kubectl apply -f -
-kubectl patch configmap argocd-cm -n argocd --type merge --patch '
-data:
-  ui.externalLinks: |
-    - title: "🏠 The Edge Story"
-      url: "https://theedgestory.org"
-    - title: "✅ Status Page"
-      url: "https://status.theedgestory.org"
-    - title: "📊 Grafana"
-      url: "https://grafana.theedgestory.org"
-    - title: "📈 Prometheus"
-      url: "https://prometheus.theedgestory.org"
-    - title: "📨 Kafka UI"
-      url: "https://kafka.theedgestory.org"
-    - title: "💾 MinIO Console"
-      url: "https://s3-admin.theedgestory.org"
-    - title: "🚀 Dev Pipeline"
-      url: "https://core-pipeline.dev.theedgestory.org/api-docs"
-    - title: "✨ Prod Pipeline"
-      url: "https://core-pipeline.theedgestory.org/api-docs"
-'
-kubectl rollout restart deployment argocd-server -n argocd
+# 5. Add navigation links to ArgoCD UI
+bash apply-working-config.sh
 
-# 4. Create OAuth2 secret for Kafka UI
+# 6. Create OAuth2 secret for Kafka UI
 bash create-kafka-ui-oauth2-secret.sh
 
-# 5. Deploy ArgoCD applications
+# 7. Deploy ArgoCD applications
 kubectl apply -f argocd-apps/
 
-# 6. ArgoCD will auto-sync and deploy everything from Git
+# Done! All services accessible via Cloudflare Tunnel
 ```
 
-**That's it!** ArgoCD watches the Git repository and automatically deploys changes.
-
-**Why ArgoCD config is separate:** ArgoCD's ingress and ConfigMaps are NOT managed by the infrastructure Helm chart to avoid circular dependencies (ArgoCD cannot manage its own configuration via a chart it deploys).
+**That's it!** All domains are now accessible through secure Cloudflare Tunnel with:
+- ✅ Server IP completely hidden
+- ✅ No inbound ports needed (443/80 can be firewalled)
+- ✅ DDoS protection at Cloudflare edge
+- ✅ Automatic TLS termination
+- ✅ High availability (2 replicas)
 
 ---
 
@@ -170,6 +163,31 @@ git push origin main
 
 ## 🏗️ Architecture
 
+### Network Architecture (Cloudflare Tunnel)
+
+```
+User Request
+    ↓
+Cloudflare Edge (DDoS protection, CDN)
+    ↓
+Cloudflare Tunnel (encrypted, outbound-only)
+    ↓
+cloudflared pods (2 replicas for HA)
+    ↓
+nginx-ingress controller
+    ↓
+OAuth2 Proxy (Google SSO)
+    ↓
+Application
+```
+
+**Benefits:**
+- ✅ Server IP hidden (zero-trust security)
+- ✅ No inbound ports (443/80 firewalled)
+- ✅ Automatic DDoS protection
+- ✅ TLS termination at Cloudflare edge
+- ✅ High availability (automatic failover)
+
 ### GitOps Workflow
 
 ```
@@ -180,9 +198,10 @@ GitHub Repository (core-charts)
 ArgoCD (auto-sync enabled)
     ↓ (applies Kubernetes manifests)
 Kubernetes Cluster
-    ├── infrastructure/ (PostgreSQL, Redis, Kafka UI)
-    ├── dev-core/ (core-pipeline-dev)
-    └── prod-core/ (core-pipeline-prod)
+    ├── cloudflare-tunnel/ (cloudflared, sync-wave: 0)
+    ├── infrastructure/ (PostgreSQL, Redis, Kafka UI, sync-wave: 1)
+    ├── dev-core/ (core-pipeline-dev, sync-wave: 2)
+    └── prod-core/ (core-pipeline-prod, sync-wave: 2)
 ```
 
 **Key Principle:** Git is the single source of truth. All changes go through Git.
@@ -191,12 +210,13 @@ Kubernetes Cluster
 
 | Namespace | Purpose | Services |
 |-----------|---------|----------|
+| `cloudflare-tunnel` | Zero-trust networking | cloudflared (2 replicas) |
 | `infrastructure` | Shared infrastructure | PostgreSQL, Redis, Kafka UI |
 | `dev-core` | Development apps | core-pipeline-dev |
 | `prod-core` | Production apps | core-pipeline-prod (2 replicas) |
 | `argocd` | GitOps platform | ArgoCD server & controllers |
-| `cert-manager` | TLS certificates | Let's Encrypt automation |
-| `oauth2-proxy` | Authentication | Google OAuth2 SSO |
+| `cert-manager` | TLS certificates | Certificate automation |
+| `oauth2-proxy` | Authentication | Google OAuth2 SSO (2 replicas) |
 | `kube-system` | System services | nginx-ingress, CoreDNS |
 
 ### Security Architecture
@@ -209,16 +229,20 @@ User → Nginx Ingress (TLS)
            → Application (validates email whitelist)
 ```
 
-**Layer 1 - Nginx Ingress:**
-- TLS termination (Let's Encrypt certificates)
+**Layer 1 - Cloudflare Edge:**
+- TLS termination at Cloudflare
+- DDoS protection and CDN
+- Routes to Cloudflare Tunnel
+
+**Layer 2 - Nginx Ingress:**
 - Routes requests to OAuth2 Proxy for auth check
 
-**Layer 2 - OAuth2 Proxy:**
+**Layer 3 - OAuth2 Proxy:**
 - Google OAuth2 authentication
 - Email whitelist: `dcversus@gmail.com` only
 - Sets authentication headers for downstream services
 
-**Layer 3 - Applications:**
+**Layer 4 - Applications:**
 - ArgoCD: Dex authproxy reads email headers → RBAC grants admin role
 - Kafka UI: Native OAuth2 integration with email regex validation
 - Grafana: Auth proxy mode with auto-login
@@ -235,6 +259,7 @@ core-charts/
 ├── CLAUDE.md                           # AI assistant context & instructions
 │
 ├── argocd-apps/                        # ArgoCD Application definitions
+│   ├── cloudflare-tunnel.yaml          # Cloudflare Tunnel (sync-wave: 0)
 │   ├── infrastructure.yaml             # Shared infra (sync-wave: 1)
 │   ├── core-pipeline-dev.yaml          # Dev app (sync-wave: 2)
 │   ├── core-pipeline-prod.yaml         # Prod app (sync-wave: 2)
@@ -259,14 +284,24 @@ core-charts/
 │       ├── prod.tag.yaml               # Prod image tag (deploy trigger)
 │       └── templates/                  # Kubernetes manifests
 │
+├── cloudflare-tunnel/                  # Cloudflare Tunnel configuration
+│   └── deployment.yaml                 # cloudflared deployment
+│
+├── argocd-config/                      # ArgoCD manual configuration
+│   ├── argocd-ingress.yaml             # ArgoCD ingress (manual apply)
+│   └── argocd-cm-patch.yaml            # Navigation links patch
+│
 ├── cert-manager/                       # TLS certificate configuration
-│   └── letsencrypt-issuer.yaml         # Let's Encrypt ClusterIssuer
+│   ├── letsencrypt-issuer.yaml         # Let's Encrypt HTTP-01 (legacy)
+│   └── cloudflare-issuer.yaml          # Cloudflare DNS-01 (current)
 │
 ├── oauth2-proxy/                       # OAuth2 authentication
 │   └── deployment.yaml                 # OAuth2 Proxy resources
 │
-├── setup-oauth2.sh                     # Initial OAuth2 setup script
-└── create-kafka-ui-oauth2-secret.sh    # Kafka UI OAuth2 secret helper
+├── setup-cloudflare-tunnel.sh          # Setup Cloudflare Tunnel (main)
+├── setup-oauth2.sh                     # Initial OAuth2 setup
+├── create-kafka-ui-oauth2-secret.sh    # Kafka UI OAuth2 secret
+└── apply-working-config.sh             # Apply all configuration
 ```
 
 ---
