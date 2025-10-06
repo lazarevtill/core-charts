@@ -129,14 +129,12 @@ spec:
 
 ---
 # Ingress for theedgestory.org
+# Note: Using Cloudflare Tunnel - TLS terminated at Cloudflare, no certs needed here
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: landing-page
   namespace: default
-  annotations:
-    cert-manager.io/cluster-issuer: theedgestory
-    kubernetes.io/tls-acme: "true"
 spec:
   ingressClassName: traefik
   rules:
@@ -150,13 +148,10 @@ spec:
             name: landing-page
             port:
               number: 80
-  tls:
-  - hosts:
-    - theedgestory.org
-    secretName: landing-page-tls
 
 ---
 # Redirect www.theedgestory.org to theedgestory.org
+# Note: Cloudflare handles the protocol, so we match both HTTP and HTTPS
 apiVersion: traefik.io/v1alpha1
 kind: Middleware
 metadata:
@@ -164,7 +159,7 @@ metadata:
   namespace: default
 spec:
   redirectRegex:
-    regex: "^https://www\\.theedgestory\\.org/(.*)"
+    regex: "^https?://www\\.theedgestory\\.org/(.*)"
     replacement: "https://theedgestory.org/${1}"
     permanent: true
 
@@ -175,8 +170,6 @@ metadata:
   name: landing-page-www
   namespace: default
   annotations:
-    cert-manager.io/cluster-issuer: theedgestory
-    kubernetes.io/tls-acme: "true"
     traefik.ingress.kubernetes.io/router.middlewares: default-www-redirect@kubernetescrd
 spec:
   ingressClassName: traefik
@@ -191,7 +184,3 @@ spec:
             name: landing-page
             port:
               number: 80
-  tls:
-  - hosts:
-    - www.theedgestory.org
-    secretName: landing-page-www-tls

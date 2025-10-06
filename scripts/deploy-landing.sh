@@ -1,5 +1,6 @@
 #!/bin/bash
 # Deploy The Edge Story landing page to theedgestory.org
+# Note: Works with Cloudflare Tunnel - TLS terminated at Cloudflare
 
 set -e
 
@@ -24,8 +25,8 @@ echo ""
 echo "📤 Applying ConfigMap..."
 kubectl apply -f landing-configmap.yaml
 
-# Apply deployment
-echo "🚀 Applying deployment..."
+# Apply deployment and ingress
+echo "🚀 Applying deployment and ingress..."
 kubectl apply -f deploy-landing.yaml
 
 # Wait for rollout
@@ -39,4 +40,6 @@ echo "URLs:"
 echo "  🌐 https://theedgestory.org"
 echo "  🔒 https://theedgestory.org/privacy-policy.html"
 echo "  📜 https://theedgestory.org/terms-of-service.html"
+echo ""
+echo "💡 Note: Using Cloudflare Tunnel for TLS termination"
 echo ""

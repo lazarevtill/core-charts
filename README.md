@@ -19,6 +19,8 @@ bash scripts/deploy-landing.sh
 - https://theedgestory.org/privacy-policy.html
 - https://theedgestory.org/terms-of-service.html
 
+**Note:** Landing page uses Cloudflare Tunnel for TLS termination. No Let's Encrypt certificates needed - Cloudflare handles HTTPS.
+
 ---
 
 ## 🔐 Deploy OAuth Authentication
