@@ -152,6 +152,26 @@ kafkaUI:
   ingress:
     host: "kafka.theedgestory.org"
 
+# Cloudflare Tunnel - Zero-trust networking (disabled by default)
+# Run setup-cloudflare-tunnel.sh to create tunnel and enable
+cloudflared:
+  enabled: false  # Set to true after running setup-cloudflare-tunnel.sh
+  tunnelId: ""    # Will be set by setup script
+  credentialsSecret: cloudflared-credentials  # Created by setup script
+  replicas: 2     # High availability
+
+  image:
+    repository: cloudflare/cloudflared
+    tag: latest
+
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 128Mi
+      cpu: 100m
+
 # Note: ArgoCD, Grafana, Prometheus, and other platform services are NOT managed here
 # These are deployed separately or via their own Helm charts
 # See argocd-config/ directory for manual ArgoCD configuration

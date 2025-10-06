@@ -1,89 +1,52 @@
-# Cloudflare Tunnel (cloudflared) Deployment
-# This creates a secure tunnel to Cloudflare without exposing server IP
+{{- if .Values.cloudflared.enabled }}
+# Cloudflare Tunnel (cloudflared) - Zero-trust networking
+# Routes all traffic through Cloudflare edge without exposing server IP
 #
-# Prerequisites:
-# 1. Create Cloudflare Tunnel: cloudflared tunnel create k8s-tunnel
-# 2. Create credentials secret (see setup-cloudflare-tunnel.sh)
-# 3. Configure tunnel routes in Cloudflare dashboard or via config
+# Setup: Run setup-cloudflare-tunnel.sh to create tunnel and credentials
 
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: cloudflared-config
-  namespace: cloudflare-tunnel
+  namespace: {{ .Release.Namespace }}
 data:
   config.yaml: |
     # Tunnel credentials file location
-    tunnel: TUNNEL_ID
+    tunnel: {{ .Values.cloudflared.tunnelId }}
     credentials-file: /etc/cloudflared/creds/credentials.json
 
     # Metrics server for monitoring
     metrics: 0.0.0.0:2000
 
-    # No TLS verification needed (using Cloudflare origin certs)
-    no-tls-verify: false
-
     # Ingress rules - route traffic to nginx-ingress controller
     ingress:
-      # ArgoCD
+      # Admin Services
       - hostname: argo.theedgestory.org
         service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
-        originRequest:
-          noTLSVerify: false
-
-      # Kafka UI
       - hostname: kafka.theedgestory.org
         service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
-        originRequest:
-          noTLSVerify: false
-
-      # Grafana
       - hostname: grafana.theedgestory.org
         service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
-        originRequest:
-          noTLSVerify: false
-
-      # Prometheus
       - hostname: prometheus.theedgestory.org
         service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
-        originRequest:
-          noTLSVerify: false
-
-      # Status Page
       - hostname: status.theedgestory.org
         service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
-        originRequest:
-          noTLSVerify: false
-
-      # MinIO Console
       - hostname: s3-admin.theedgestory.org
         service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
-        originRequest:
-          noTLSVerify: false
 
-      # Core Pipeline Dev
+      # Application Services
       - hostname: core-pipeline.dev.theedgestory.org
         service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
-        originRequest:
-          noTLSVerify: false
-
-      # Core Pipeline Prod
       - hostname: core-pipeline.theedgestory.org
         service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
-        originRequest:
-          noTLSVerify: false
 
       # OAuth2 Proxy
       - hostname: auth.theedgestory.org
         service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
-        originRequest:
-          noTLSVerify: false
 
-      # Main website (if needed)
+      # Main website
       - hostname: theedgestory.org
         service: http://ingress-nginx-controller.kube-system.svc.cluster.local:80
-        originRequest:
-          noTLSVerify: false
 
       # Catch-all rule (required)
       - service: http_status:404
@@ -93,11 +56,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: cloudflared
-  namespace: cloudflare-tunnel
+  namespace: {{ .Release.Namespace }}
   labels:
     app: cloudflared
 spec:
-  replicas: 2  # Run 2 replicas for HA
+  replicas: {{ .Values.cloudflared.replicas }}
   selector:
     matchLabels:
       app: cloudflared
@@ -108,7 +71,7 @@ spec:
     spec:
       containers:
       - name: cloudflared
-        image: cloudflare/cloudflared:latest
+        image: {{ .Values.cloudflared.image.repository }}:{{ .Values.cloudflared.image.tag }}
         args:
         - tunnel
         - --config
@@ -117,11 +80,11 @@ spec:
 
         resources:
           requests:
-            memory: 64Mi
-            cpu: 50m
+            memory: {{ .Values.cloudflared.resources.requests.memory }}
+            cpu: {{ .Values.cloudflared.resources.requests.cpu }}
           limits:
-            memory: 128Mi
-            cpu: 100m
+            memory: {{ .Values.cloudflared.resources.limits.memory }}
+            cpu: {{ .Values.cloudflared.resources.limits.cpu }}
 
         livenessProbe:
           httpGet:
@@ -146,14 +109,14 @@ spec:
           name: cloudflared-config
       - name: creds
         secret:
-          secretName: cloudflared-credentials
+          secretName: {{ .Values.cloudflared.credentialsSecret }}
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: cloudflared-metrics
-  namespace: cloudflare-tunnel
+  namespace: {{ .Release.Namespace }}
   labels:
     app: cloudflared
 spec:
@@ -164,3 +127,4 @@ spec:
     port: 2000
     targetPort: 2000
     protocol: TCP
+{{- end }}
