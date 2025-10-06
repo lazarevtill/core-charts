@@ -1,0 +1,3 @@
+image:
+  tag: "main-bc7ada7"
+  repository: "ghcr.io/uz0/core-pipeline"

@@ -1,0 +1,162 @@
+# Production environment overrides
+replicaCount: 2
+
+image:
+  pullPolicy: Always
+imagePullSecrets:
+  - name: ghcr-secret
+
+# Reference infrastructure secrets for database and Redis credentials
+externalSecrets:
+  # PostgreSQL credentials from infrastructure namespace
+  - envName: DB_HOST
+    secretName: postgres-core-pipeline-prod-secret
+    secretKey: DB_HOST
+  - envName: DB_PORT
+    secretName: postgres-core-pipeline-prod-secret
+    secretKey: DB_PORT
+  - envName: DB_USERNAME
+    secretName: postgres-core-pipeline-prod-secret
+    secretKey: DB_USERNAME
+  - envName: DB_PASSWORD
+    secretName: postgres-core-pipeline-prod-secret
+    secretKey: DB_PASSWORD
+  - envName: DB_DATABASE
+    secretName: postgres-core-pipeline-prod-secret
+    secretKey: DB_DATABASE
+  # Legacy PostgreSQL vars for backward compatibility
+  - envName: POSTGRES_HOST
+    secretName: postgres-core-pipeline-prod-secret
+    secretKey: DB_HOST
+  - envName: POSTGRES_PORT
+    secretName: postgres-core-pipeline-prod-secret
+    secretKey: DB_PORT
+  - envName: POSTGRES_USER
+    secretName: postgres-core-pipeline-prod-secret
+    secretKey: DB_USERNAME
+  - envName: POSTGRES_PASSWORD
+    secretName: postgres-core-pipeline-prod-secret
+    secretKey: DB_PASSWORD
+  - envName: POSTGRES_DB
+    secretName: postgres-core-pipeline-prod-secret
+    secretKey: DB_DATABASE
+  # Redis credentials from infrastructure namespace
+  - envName: REDIS_HOST
+    secretName: redis-prod-secret
+    secretKey: REDIS_HOST
+  - envName: REDIS_PORT
+    secretName: redis-prod-secret
+    secretKey: REDIS_PORT
+  - envName: REDIS_PASSWORD
+    secretName: redis-prod-secret
+    secretKey: REDIS_PASSWORD
+  # Bull Queue Redis URL
+  - envName: BULL_REDIS_URL
+    secretName: redis-prod-secret
+    secretKey: REDIS_URL
+  - envName: REDIS_URL
+    secretName: redis-prod-secret
+    secretKey: REDIS_URL
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+  hosts:
+    - host: core-pipeline.theedgestory.org
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: core-pipeline-prod-tls
+      hosts:
+        - core-pipeline.theedgestory.org
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 75
+
+env:
+  # Application
+  NODE_ENV: production
+  PORT: "3000"
+  ENABLE_SWAGGER: "true"
+  LOG_LEVEL: info
+  LOG_PRETTY: "false"
+
+  # Database logging
+  DB_LOGGING: "false"
+
+  # Kafka
+  KAFKA_CLIENT_ID: core-pipeline-prod
+  KAFKA_BROKER: kafka.kafka.svc.cluster.local:9092
+  KAFKA_CONSUMER_GROUP: core-pipeline-prod-group
+
+  # Legacy Kafka vars for backward compatibility
+  KAFKA_BROKERS: kafka.kafka.svc.cluster.local:9092
+  KAFKA_GROUP_ID: core-pipeline-prod-group
+
+  # Observability
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://tempo.monitoring:4318
+  OTEL_SERVICE_NAME: core-pipeline-prod
+  SERVICE_VERSION: "1.0.0"
+  METRICS_ENABLED: "true"
+  METRICS_PREFIX: core_pipeline
+  TRACING_ENABLED: "true"
+
+persistence:
+  enabled: false
+
+networkPolicy:
+  enabled: false
+
+serviceMonitor:
+  enabled: false
+
+# Health check configuration (same as dev for consistency)
+livenessProbe:
+  httpGet:
+    path: /health/liveness
+    port: 3000
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  timeoutSeconds: 10
+  failureThreshold: 5
+
+readinessProbe:
+  httpGet:
+    path: /health/readiness
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 5
+
+startupProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 15
+  periodSeconds: 10
+  timeoutSeconds: 10
+  failureThreshold: 30
+  successThreshold: 1
+
+# GitHub Container Registry credentials
+# These should be provided via --set during helm install or via sealed-secrets
+ghcrCredentials:
+  username: "uz0"  # GitHub username
+  password: ""  # GitHub PAT with read:packages scope
