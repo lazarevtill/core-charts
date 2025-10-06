@@ -1,7 +1,13 @@
 #!/bin/bash
+set -e
+
+# CRITICAL: Set kubeconfig path
+export KUBECONFIG=~/.kube/config
 
 echo "🔍 ArgoCD Application Status Check"
 echo "===================================="
+echo "Using KUBECONFIG: $KUBECONFIG"
+echo ""
 
 for app in infrastructure core-pipeline-dev core-pipeline-prod landing-page; do
   echo ""

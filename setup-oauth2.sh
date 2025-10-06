@@ -1,8 +1,13 @@
 #!/bin/bash
 set -e
 
+# CRITICAL: Set kubeconfig path
+export KUBECONFIG=~/.kube/config
+
 echo "🔐 Setting up OAuth2 Proxy with Google Authentication"
 echo "======================================================"
+echo "Using KUBECONFIG: $KUBECONFIG"
+echo ""
 
 # Check required environment variables
 if [ -z "$GOOGLE_CLIENT_ID" ] || [ -z "$GOOGLE_CLIENT_SECRET" ]; then

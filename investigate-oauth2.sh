@@ -1,7 +1,13 @@
 #!/bin/bash
+set -e
+
+# CRITICAL: Set kubeconfig path
+export KUBECONFIG=~/.kube/config
 
 echo "🔍 OAuth2 Proxy Investigation"
 echo "=============================="
+echo "Using KUBECONFIG: $KUBECONFIG"
+echo ""
 
 echo ""
 echo "1️⃣ OAuth2 Proxy Pods:"

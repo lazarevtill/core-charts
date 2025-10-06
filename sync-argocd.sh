@@ -1,8 +1,13 @@
 #!/bin/bash
 set -e
 
+# CRITICAL: Set kubeconfig path
+export KUBECONFIG=~/.kube/config
+
 echo "🔄 ArgoCD State Cleanup & Sync Script"
 echo "======================================"
+echo "Using KUBECONFIG: $KUBECONFIG"
+echo ""
 
 # Pull latest code
 echo ""

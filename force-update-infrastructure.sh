@@ -1,8 +1,13 @@
 #!/bin/bash
 set -e
 
+# CRITICAL: Set kubeconfig path
+export KUBECONFIG=~/.kube/config
+
 echo "🔧 Force Update Infrastructure App to Helm Chart"
 echo "================================================"
+echo "Using KUBECONFIG: $KUBECONFIG"
+echo ""
 
 # Pull latest code
 echo ""

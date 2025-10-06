@@ -1,10 +1,18 @@
 #!/bin/bash
+set -e
 
-# Use your kubeconfig
+# CRITICAL: Set kubeconfig path
 export KUBECONFIG=~/.kube/config
 
 echo "🔍 Kubernetes OAuth2 Investigation"
 echo "===================================="
+echo "Using KUBECONFIG: $KUBECONFIG"
+echo ""
+
+# Verify kubectl works
+echo "Testing kubectl connection..."
+kubectl version --short 2>/dev/null || kubectl version --client
+echo ""
 
 echo ""
 echo "📦 All Namespaces:"
