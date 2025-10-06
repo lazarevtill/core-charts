@@ -46,7 +46,7 @@ git commit -m "deploy: core-pipeline dev v1.2.3"
 git push origin main
 
 # 3. ArgoCD auto-syncs within 3 minutes
-# Watch deployment at: https://argo.dev.theedgestory.org
+# Watch deployment at: https://argo.theedgestory.org
 ```
 
 **No manual kubectl commands needed!** Git push triggers deployment automatically.
@@ -61,10 +61,10 @@ git push origin main
 
 | Service | URL | What It Does |
 |---------|-----|--------------|
-| **ArgoCD** | https://argo.dev.theedgestory.org | GitOps deployment dashboard |
-| **Grafana** | https://grafana.dev.theedgestory.org | Metrics & monitoring |
+| **ArgoCD** | https://argo.theedgestory.org | GitOps deployment dashboard |
+| **Grafana** | https://grafana.theedgestory.org | Metrics & monitoring |
 | **Kafka UI** | https://kafka.theedgestory.org | Kafka topic management |
-| **Prometheus** | https://prometheus.dev.theedgestory.org | Metrics collection |
+| **Prometheus** | https://prometheus.theedgestory.org | Metrics collection |
 
 **Access:**
 1. Visit any admin URL
@@ -91,7 +91,7 @@ git commit -m "config: increase PostgreSQL memory to 1Gi"
 git push origin main
 
 # 3. ArgoCD auto-syncs and applies changes
-# Monitor at: https://argo.dev.theedgestory.org
+# Monitor at: https://argo.theedgestory.org
 ```
 
 **Infrastructure services:**
@@ -115,7 +115,7 @@ kubectl logs -n prod-core -l app=core-pipeline --tail=100 -f
 ```
 
 **Option 2: Via Grafana**
-1. Visit https://grafana.dev.theedgestory.org
+1. Visit https://grafana.theedgestory.org
 2. Login with Google OAuth2
 3. Explore → Logs → Select namespace and pod
 
@@ -259,7 +259,7 @@ git push origin main
 
 ```bash
 # Via ArgoCD UI
-open https://argo.dev.theedgestory.org
+open https://argo.theedgestory.org
 
 # Via CLI
 kubectl get applications -n argocd
@@ -306,10 +306,10 @@ kubectl patch application infrastructure -n argocd \
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **ArgoCD** | https://argo.dev.theedgestory.org | Google OAuth2 (dcversus@gmail.com) |
-| **Grafana** | https://grafana.dev.theedgestory.org | Google OAuth2 (dcversus@gmail.com) |
+| **ArgoCD** | https://argo.theedgestory.org | Google OAuth2 (dcversus@gmail.com) |
+| **Grafana** | https://grafana.theedgestory.org | Google OAuth2 (dcversus@gmail.com) |
 | **Kafka UI** | https://kafka.theedgestory.org | Google OAuth2 (dcversus@gmail.com) |
-| **Prometheus** | https://prometheus.dev.theedgestory.org | Google OAuth2 (dcversus@gmail.com) |
+| **Prometheus** | https://prometheus.theedgestory.org | Google OAuth2 (dcversus@gmail.com) |
 
 ---
 

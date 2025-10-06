@@ -262,7 +262,7 @@ kubectl patch application infrastructure -n argocd \
   -p '{"operation":{"sync":{"revision":"HEAD"}}}'
 
 # Access ArgoCD UI
-open https://argo.dev.theedgestory.org
+open https://argo.theedgestory.org
 ```
 
 ### Check Deployments
@@ -482,8 +482,8 @@ docs: update README with new service URLs
 | Change Redis config | Edit values | `charts/infrastructure/values.yaml` |
 | Add new admin service | Add templates | `charts/infrastructure/templates/` |
 | Update OAuth2 whitelist | Edit ConfigMap | `oauth2-proxy/deployment.yaml` (email list) |
-| Check deployment status | ArgoCD UI | https://argo.dev.theedgestory.org |
-| View app logs | Grafana or kubectl | https://grafana.dev.theedgestory.org |
+| Check deployment status | ArgoCD UI | https://argo.theedgestory.org |
+| View app logs | Grafana or kubectl | https://grafana.theedgestory.org |
 | Rollback deployment | Git revert | `git revert <commit-hash>` |
 
 ---

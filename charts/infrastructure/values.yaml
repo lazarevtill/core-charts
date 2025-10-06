@@ -151,3 +151,30 @@ kafkaUI:
 
   ingress:
     host: "kafka.theedgestory.org"
+
+# ArgoCD - GitOps Platform
+argocd:
+  ingress:
+    enabled: true
+    host: "argo.theedgestory.org"
+
+  externalLinks:
+    enabled: true
+
+  rbac:
+    enabled: true
+
+# Grafana - Monitoring Dashboard
+grafana:
+  ingress:
+    enabled: true
+    host: "grafana.theedgestory.org"
+
+  externalLinks:
+    enabled: true
+
+# Prometheus - Metrics Collection
+prometheus:
+  ingress:
+    enabled: true
+    host: "prometheus.theedgestory.org"

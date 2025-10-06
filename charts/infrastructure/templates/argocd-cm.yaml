@@ -1,0 +1,41 @@
+{{- if .Values.argocd.externalLinks.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  # Dex authproxy connector for OAuth2 Proxy
+  accounts.dcversus: "apiKey,login"
+  admin.enabled: "true"
+  users.anonymous.enabled: "true"
+  dex.config: |
+    connectors:
+    - type: authproxy
+      id: oauth2-proxy
+      name: Google OAuth2
+      config:
+        userHeader: X-Auth-Request-Email
+        emailHeader: X-Auth-Request-Email
+        groupHeader: X-Auth-Request-Groups
+
+  # External links (pinned to top navigation)
+  ui.externalLinks: |
+    - title: "🏠 The Edge Story"
+      url: "https://theedgestory.org"
+    - title: "📊 Grafana"
+      url: "https://grafana.theedgestory.org"
+    - title: "📈 Prometheus"
+      url: "https://prometheus.theedgestory.org"
+    - title: "📨 Kafka UI"
+      url: "https://kafka.theedgestory.org"
+    - title: "💾 MinIO Console"
+      url: "https://s3-admin.theedgestory.org"
+    - title: "🚀 Dev Pipeline"
+      url: "https://core-pipeline.dev.theedgestory.org/api-docs"
+    - title: "✨ Prod Pipeline"
+      url: "https://core-pipeline.theedgestory.org/api-docs"
+{{- end }}
