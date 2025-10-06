@@ -178,3 +178,9 @@ prometheus:
   ingress:
     enabled: true
     host: "prometheus.theedgestory.org"
+
+# Gatus - Status Page
+gatus:
+  ingress:
+    enabled: true
+    host: "status.theedgestory.org"

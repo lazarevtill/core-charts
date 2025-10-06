@@ -40,6 +40,11 @@ data:
     target = "_blank"
 
     [[external_links]]
+    name = "✅ Status Page"
+    url = "https://status.theedgestory.org"
+    target = "_blank"
+
+    [[external_links]]
     name = "🚀 ArgoCD"
     url = "https://argo.theedgestory.org"
     target = "_blank"

@@ -26,6 +26,8 @@ data:
   ui.externalLinks: |
     - title: "🏠 The Edge Story"
       url: "https://theedgestory.org"
+    - title: "✅ Status Page"
+      url: "https://status.theedgestory.org"
     - title: "📊 Grafana"
       url: "https://grafana.theedgestory.org"
     - title: "📈 Prometheus"
