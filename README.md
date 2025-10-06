@@ -8,18 +8,24 @@
 
 ## 🌌 Deploy Landing Page
 
+### 1. Install nginx-ingress (one-time setup)
+
 ```bash
 cd /root/core-charts
 git pull origin main
+bash scripts/install-ingress.sh
+```
+
+### 2. Deploy landing page
+
+```bash
 bash scripts/deploy-landing.sh
 ```
 
-**URLs after deployment:**
+**URLs:**
 - https://theedgestory.org
 - https://theedgestory.org/privacy-policy.html
 - https://theedgestory.org/terms-of-service.html
-
-**Note:** Landing page uses Let's Encrypt for TLS certificates via cert-manager.
 
 ---
 
