@@ -78,19 +78,10 @@ redis:
     appendonly yes
 
 # Kafka (Bitnami)
+# NOTE: Temporarily disabled - Bitnami changed their image strategy in 2025
+# Will use Strimzi operator instead for Kafka
 kafka:
-  enabled: true
-
-  # Override image to use latest stable tag
-  image:
-    registry: docker.io
-    repository: bitnami/kafka
-    tag: 3.9.0-debian-12-r4
-
-  auth:
-    clientProtocol: plaintext
-
-  replicaCount: 1
+  enabled: false
 
   resources:
     requests:
