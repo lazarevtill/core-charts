@@ -67,6 +67,7 @@ ingress:
       paths:
         - path: /
           pathType: Prefix
+  altHost: core-pipeline-dev.theedgestory.org  # Alternate hostname with hyphen
 resources:
   requests:
     cpu: 100m

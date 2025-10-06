@@ -1,0 +1,28 @@
+{{- if .Values.ingress.enabled }}
+{{- if .Values.ingress.altHost }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "core-pipeline.fullname" . }}-alt
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "core-pipeline.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+  - host: {{ .Values.ingress.altHost }}
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ include "core-pipeline.fullname" . }}
+            port:
+              number: 80
+{{- end }}
+{{- end }}
