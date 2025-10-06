@@ -1,0 +1,36 @@
+# Cloudflare ClusterIssuer for DNS-01 Challenge
+# This works with Cloudflare proxy enabled (orange cloud)
+#
+# Prerequisites:
+# 1. Create Cloudflare API Token with permissions:
+#    - Zone:DNS:Edit for all zones
+# 2. Create Kubernetes secret with API token:
+#    kubectl create secret generic cloudflare-api-token \
+#      --from-literal=api-token=YOUR_CLOUDFLARE_API_TOKEN \
+#      -n cert-manager
+
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-cloudflare
+spec:
+  acme:
+    # Let's Encrypt production server
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: dcversus@gmail.com
+
+    # Store account key in secret
+    privateKeySecretRef:
+      name: letsencrypt-cloudflare-account-key
+
+    # DNS-01 challenge using Cloudflare
+    solvers:
+    - dns01:
+        cloudflare:
+          email: dcversus@gmail.com
+          apiTokenSecretRef:
+            name: cloudflare-api-token
+            key: api-token
+      selector:
+        dnsZones:
+        - theedgestory.org

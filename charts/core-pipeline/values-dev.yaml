@@ -61,6 +61,7 @@ ingress:
   enabled: true
   className: nginx
   annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
     nginx.ingress.kubernetes.io/service-upstream: "true"
   hosts:
     - host: core-pipeline.dev.theedgestory.org

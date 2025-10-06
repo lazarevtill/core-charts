@@ -10,8 +10,9 @@ metadata:
   name: argocd-server
   namespace: argocd
   annotations:
-    # TLS certificate management
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+    # TLS certificate management (Cloudflare DNS-01 challenge)
+    # This works with Cloudflare proxy enabled (orange cloud)
+    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
 
     # OAuth2 Proxy authentication
     nginx.ingress.kubernetes.io/auth-url: http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/oauth2/auth
