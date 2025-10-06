@@ -14,23 +14,10 @@ metadata:
     # This works with Cloudflare proxy enabled (orange cloud)
     cert-manager.io/cluster-issuer: letsencrypt-cloudflare
 
-    # OAuth2 Proxy authentication
-    nginx.ingress.kubernetes.io/auth-url: http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/oauth2/auth
-    nginx.ingress.kubernetes.io/auth-signin: https://auth.theedgestory.org/oauth2/start?rd=$scheme://$host$request_uri
-    nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email,X-Auth-Request-Access-Token,Authorization
-
     # ArgoCD backend configuration
     nginx.ingress.kubernetes.io/backend-protocol: HTTP
     nginx.ingress.kubernetes.io/service-upstream: "true"
-
-    # Pass auth headers to ArgoCD
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      proxy_set_header X-Auth-Request-User "";
-      proxy_set_header X-Auth-Request-Email "";
-      auth_request_set $user $upstream_http_x_auth_request_user;
-      auth_request_set $email $upstream_http_x_auth_request_email;
-      proxy_set_header X-Auth-Request-User $user;
-      proxy_set_header X-Auth-Request-Email $email;
+    nginx.ingress.kubernetes.io/ssl-passthrough: "false"
 
 spec:
   ingressClassName: nginx
