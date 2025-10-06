@@ -61,19 +61,39 @@ kubectl annotate ingress oauth2-proxy -n oauth2-proxy \
   --overwrite 2>/dev/null || true
 
 echo ""
-echo "6️⃣ Adding auth annotations to service ingresses..."
+echo "6️⃣ Adding auth annotations to ALL service ingresses..."
+
+# Auth annotation values
+AUTH_URL="https://auth.theedgestory.org/oauth2/auth"
+AUTH_SIGNIN="https://auth.theedgestory.org/oauth2/start?rd=\$scheme://\$host\$request_uri"
 
 # ArgoCD
 kubectl annotate ingress argocd-server -n argocd \
-  nginx.ingress.kubernetes.io/auth-url="https://auth.theedgestory.org/oauth2/auth" \
-  nginx.ingress.kubernetes.io/auth-signin="https://auth.theedgestory.org/oauth2/start?rd=\$scheme://\$host\$request_uri" \
-  --overwrite || echo "   ArgoCD ingress not found (OK)"
+  nginx.ingress.kubernetes.io/auth-url="$AUTH_URL" \
+  nginx.ingress.kubernetes.io/auth-signin="$AUTH_SIGNIN" \
+  --overwrite && echo "   ✅ ArgoCD protected" || echo "   ⚠️  ArgoCD ingress not found"
 
-# Grafana (if exists)
+# Grafana
 kubectl annotate ingress grafana -n monitoring \
-  nginx.ingress.kubernetes.io/auth-url="https://auth.theedgestory.org/oauth2/auth" \
-  nginx.ingress.kubernetes.io/auth-signin="https://auth.theedgestory.org/oauth2/start?rd=\$scheme://\$host\$request_uri" \
-  --overwrite 2>/dev/null || echo "   Grafana ingress not found (OK)"
+  nginx.ingress.kubernetes.io/auth-url="$AUTH_URL" \
+  nginx.ingress.kubernetes.io/auth-signin="$AUTH_SIGNIN" \
+  --overwrite 2>/dev/null && echo "   ✅ Grafana protected" || echo "   ⚠️  Grafana ingress not found"
+
+# MinIO/S3 Admin
+kubectl annotate ingress minio -n infrastructure \
+  nginx.ingress.kubernetes.io/auth-url="$AUTH_URL" \
+  nginx.ingress.kubernetes.io/auth-signin="$AUTH_SIGNIN" \
+  --overwrite 2>/dev/null && echo "   ✅ MinIO protected" || \
+kubectl annotate ingress minio-console -n infrastructure \
+  nginx.ingress.kubernetes.io/auth-url="$AUTH_URL" \
+  nginx.ingress.kubernetes.io/auth-signin="$AUTH_SIGNIN" \
+  --overwrite 2>/dev/null && echo "   ✅ MinIO Console protected" || echo "   ⚠️  MinIO ingress not found"
+
+# Kafka UI
+kubectl annotate ingress kafka-ui -n infrastructure \
+  nginx.ingress.kubernetes.io/auth-url="$AUTH_URL" \
+  nginx.ingress.kubernetes.io/auth-signin="$AUTH_SIGNIN" \
+  --overwrite 2>/dev/null && echo "   ✅ Kafka UI protected" || echo "   ⚠️  Kafka UI ingress not found"
 
 echo ""
 echo "✅ DONE!"
@@ -82,9 +102,11 @@ echo "📊 OAuth2 Proxy deployed:"
 echo "   - Auth URL: https://auth.theedgestory.org"
 echo "   - Allowed user: dcversus@gmail.com"
 echo ""
-echo "🔒 Protected services:"
+echo "🔒 Protected services (Google OAuth required):"
 echo "   - ArgoCD: https://argo.theedgestory.org"
-echo "   - Grafana: https://grafana.theedgestory.org (if deployed)"
+echo "   - Grafana: https://grafana.theedgestory.org"
+echo "   - MinIO/S3: https://s3-admin.theedgestory.org"
+echo "   - Kafka UI: https://kafka.theedgestory.org"
 echo ""
 echo "🌐 Google OAuth Redirect URI (add to Google Console):"
 echo "   https://auth.theedgestory.org/oauth2/callback"
