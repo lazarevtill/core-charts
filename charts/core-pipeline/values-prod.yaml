@@ -97,11 +97,11 @@ env:
 
   # Kafka
   KAFKA_CLIENT_ID: core-pipeline-prod
-  KAFKA_BROKER: kafka.kafka.svc.cluster.local:9092
+  KAFKA_BROKER: infrastructure-kafka.infrastructure.svc.cluster.local:9092
   KAFKA_CONSUMER_GROUP: core-pipeline-prod-group
 
   # Legacy Kafka vars for backward compatibility
-  KAFKA_BROKERS: kafka.kafka.svc.cluster.local:9092
+  KAFKA_BROKERS: infrastructure-kafka.infrastructure.svc.cluster.local:9092
   KAFKA_GROUP_ID: core-pipeline-prod-group
 
   # Observability

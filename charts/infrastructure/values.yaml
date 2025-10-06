@@ -1,0 +1,119 @@
+# Shared Infrastructure Configuration for The Edge Story
+# Single shared PostgreSQL, Redis, and Kafka with credential isolation
+
+# PostgreSQL (Bitnami)
+postgresql:
+  enabled: true
+  auth:
+    username: postgres
+    password: "CHANGE_ME_postgres_password"
+    database: postgres
+
+  primary:
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 250m
+      limits:
+        memory: 512Mi
+        cpu: 500m
+
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: local-path
+
+    initdb:
+      scripts:
+        init.sql: |
+          -- Create databases for dev and prod environments
+          CREATE DATABASE core_dev;
+          CREATE DATABASE core_prod;
+
+          -- Create users with environment-specific credentials
+          CREATE USER core_dev_user WITH PASSWORD 'CHANGE_ME_core_dev_password';
+          CREATE USER core_prod_user WITH PASSWORD 'CHANGE_ME_core_prod_password';
+
+          -- Grant database ownership
+          GRANT ALL PRIVILEGES ON DATABASE core_dev TO core_dev_user;
+          GRANT ALL PRIVILEGES ON DATABASE core_prod TO core_prod_user;
+
+          -- Connect to core_dev and grant schema permissions
+          \c core_dev
+          GRANT ALL ON SCHEMA public TO core_dev_user;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO core_dev_user;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO core_dev_user;
+
+          -- Connect to core_prod and grant schema permissions
+          \c core_prod
+          GRANT ALL ON SCHEMA public TO core_prod_user;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO core_prod_user;
+          ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO core_prod_user;
+
+# Redis (Bitnami)
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+    password: "CHANGE_ME_redis_password"
+
+  master:
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 256Mi
+        cpu: 250m
+
+    persistence:
+      enabled: true
+      size: 2Gi
+      storageClass: local-path
+
+  commonConfiguration: |-
+    maxmemory 256mb
+    maxmemory-policy allkeys-lru
+    appendonly yes
+
+# Kafka (Bitnami)
+kafka:
+  enabled: true
+  auth:
+    clientProtocol: plaintext
+
+  replicaCount: 1
+
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+
+  persistence:
+    enabled: false
+    size: 8Gi
+    storageClass: local-path
+
+  zookeeper:
+    enabled: true
+    replicaCount: 1
+    resources:
+      requests:
+        memory: 256Mi
+        cpu: 100m
+      limits:
+        memory: 512Mi
+        cpu: 250m
+    persistence:
+      enabled: false
+      size: 2Gi
+      storageClass: local-path
+
+  # Kafka configuration
+  extraEnvVars:
+    - name: KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE
+      value: "true"

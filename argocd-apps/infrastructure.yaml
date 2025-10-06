@@ -3,12 +3,16 @@ kind: Application
 metadata:
   name: infrastructure
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: default
   source:
     repoURL: https://github.com/uz0/core-charts.git
     targetRevision: HEAD
-    path: k8s/infrastructure
+    path: charts/infrastructure
+    helm:
+      releaseName: infrastructure
   destination:
     server: https://kubernetes.default.svc
     namespace: infrastructure
@@ -18,3 +22,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+    syncStrategy:
+      hook:
+        force: true
