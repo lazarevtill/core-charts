@@ -1,0 +1,197 @@
+---
+# NOTE: The ConfigMap is generated separately using create-configmap.sh
+# This keeps the deployment YAML clean and manageable
+
+---
+# Nginx configuration for serving static files
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: landing-nginx-config
+  namespace: default
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name _;
+
+        root /usr/share/nginx/html;
+        index index.html;
+
+        # Gzip compression
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css text/xml text/javascript application/javascript application/xml+rss application/json;
+
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+
+        # Cache static assets
+        location ~* \.(jpg|jpeg|png|gif|ico|css|js|svg|woff|woff2|ttf|eot)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        # Serve HTML files
+        location / {
+            try_files $uri $uri.html $uri/ =404;
+        }
+
+        # Custom 404 page (redirect to homepage)
+        error_page 404 /index.html;
+
+        # Health check endpoint
+        location /healthz {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+    }
+
+---
+# Deployment for landing page nginx server
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: landing-page
+  namespace: default
+  labels:
+    app: landing-page
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: landing-page
+  template:
+    metadata:
+      labels:
+        app: landing-page
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+          name: http
+        volumeMounts:
+        - name: html-content
+          mountPath: /usr/share/nginx/html
+          readOnly: true
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+          readOnly: true
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "10m"
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 3
+          periodSeconds: 5
+      volumes:
+      - name: html-content
+        configMap:
+          name: landing-page
+      - name: nginx-config
+        configMap:
+          name: landing-nginx-config
+
+---
+# Service for landing page
+apiVersion: v1
+kind: Service
+metadata:
+  name: landing-page
+  namespace: default
+spec:
+  selector:
+    app: landing-page
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  type: ClusterIP
+
+---
+# Ingress for theedgestory.org
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: landing-page
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: theedgestory
+    kubernetes.io/tls-acme: "true"
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: theedgestory.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: landing-page
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - theedgestory.org
+    secretName: landing-page-tls
+
+---
+# Redirect www.theedgestory.org to theedgestory.org
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: www-redirect
+  namespace: default
+spec:
+  redirectRegex:
+    regex: "^https://www\\.theedgestory\\.org/(.*)"
+    replacement: "https://theedgestory.org/${1}"
+    permanent: true
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: landing-page-www
+  namespace: default
+  annotations:
+    cert-manager.io/cluster-issuer: theedgestory
+    kubernetes.io/tls-acme: "true"
+    traefik.ingress.kubernetes.io/router.middlewares: default-www-redirect@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: www.theedgestory.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: landing-page
+            port:
+              number: 80
+  tls:
+  - hosts:
+    - www.theedgestory.org
+    secretName: landing-page-www-tls

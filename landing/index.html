@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Edge Story - Endless Cosmic Narrative</title>
+    <meta name="description" content="The Edge Story is an endless story generation unit where players collaborate in real-time to create interactive sci-fi narratives about the cosmic future.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌌</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #f093fb;
+            --dark: #0f0f23;
+            --darker: #050510;
+            --light: #e8e8f0;
+            --glow: rgba(102, 126, 234, 0.5);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--darker) 0%, var(--dark) 100%);
+            color: var(--light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated background stars */
+        .stars {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite ease-in-out;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            padding: 4rem 0 3rem;
+        }
+
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 40px var(--glow);
+        }
+
+        .tagline {
+            font-size: 1.5rem;
+            color: var(--accent);
+            margin-bottom: 2rem;
+            font-weight: 300;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.75rem 2rem;
+            background: rgba(102, 126, 234, 0.2);
+            border: 2px solid var(--primary);
+            border-radius: 50px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 0.9rem;
+            box-shadow: 0 0 20px var(--glow);
+        }
+
+        .hero {
+            background: rgba(15, 15, 35, 0.6);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 3rem;
+            margin: 3rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            line-height: 1.8;
+            margin-bottom: 1.5rem;
+            color: rgba(232, 232, 240, 0.9);
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 4rem 0;
+        }
+
+        .feature {
+            background: rgba(15, 15, 35, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 2.5rem;
+            border-radius: 15px;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 40px var(--glow);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .feature p {
+            color: rgba(232, 232, 240, 0.8);
+            line-height: 1.6;
+        }
+
+        .tech-stack {
+            background: rgba(15, 15, 35, 0.6);
+            backdrop-filter: blur(10px);
+            padding: 3rem;
+            border-radius: 20px;
+            margin: 4rem 0;
+            border: 1px solid rgba(102, 126, 234, 0.3);
+        }
+
+        .tech-stack h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .tech-item {
+            padding: 1.5rem;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        .tech-item strong {
+            color: var(--accent);
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .cta {
+            text-align: center;
+            margin: 4rem 0;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1.25rem 3rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            border: 2px solid transparent;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.6);
+            border-color: var(--accent);
+        }
+
+        .cta-subtitle {
+            margin-top: 1rem;
+            color: rgba(232, 232, 240, 0.7);
+            font-size: 1.1rem;
+        }
+
+        footer {
+            text-align: center;
+            padding: 3rem 0;
+            margin-top: 4rem;
+            border-top: 1px solid rgba(102, 126, 234, 0.2);
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+            margin: 0 1rem;
+            transition: color 0.3s ease;
+        }
+
+        footer a:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        .footer-links {
+            margin: 1.5rem 0;
+            font-size: 1.1rem;
+        }
+
+        .copyright {
+            margin-top: 2rem;
+            color: rgba(232, 232, 240, 0.5);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .tagline {
+                font-size: 1.2rem;
+            }
+
+            .hero {
+                padding: 2rem;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+
+            .tech-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Pulse animation for status badge */
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 0 20px var(--glow);
+            }
+            50% {
+                box-shadow: 0 0 40px var(--glow), 0 0 60px var(--glow);
+            }
+        }
+
+        .status-badge {
+            animation: pulse 2s ease-in-out infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Animated stars background -->
+    <div class="stars" id="stars"></div>
+
+    <div class="container">
+        <header>
+            <div class="logo">🌌</div>
+            <h1>The Edge Story</h1>
+            <p class="tagline">Endless Cosmic Narrative Generation</p>
+            <div class="status-badge">⚡ Under Development</div>
+        </header>
+
+        <section class="hero">
+            <p>
+                <strong>Welcome to The Edge Story</strong> – an endless story generation unit where the boundaries
+                between game and narrative dissolve into pure creative energy.
+            </p>
+            <p>
+                Imagine a universe where <strong>you and other players collaborate in real-time</strong>, wielding
+                the power of advanced AI to craft, edit, and evolve an <strong>interactive sci-fi narrative</strong>
+                that never ends. Every decision matters. Every word shapes reality. Every player is both author
+                and protagonist in a cosmic tale that stretches across the infinite edge of possibility.
+            </p>
+            <p>
+                This is not just a game. This is <strong>collaborative storytelling at the speed of thought</strong>,
+                powered by large language models that adapt to your imagination, creating a living, breathing
+                universe of cosmic proportions.
+            </p>
+        </section>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">🎮</div>
+                <h3>Play Together</h3>
+                <p>
+                    Join forces with players from around the world in synchronized storytelling sessions.
+                    Real-time collaboration means every choice ripples through the narrative simultaneously,
+                    creating emergent storylines that no single author could conceive.
+                </p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🤖</div>
+                <h3>AI-Powered Narrative</h3>
+                <p>
+                    Harness the power of large language models to generate, edit, and refine your cosmic
+                    saga. The AI responds to your creative direction, suggesting plot twists, character
+                    development, and world-building details that feel organic and surprising.
+                </p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🌠</div>
+                <h3>Cosmic Future Setting</h3>
+                <p>
+                    Explore a sci-fi universe at the edge of known space, where technology and mystery
+                    intertwine. Ancient civilizations, quantum anomalies, sentient starships, and
+                    philosophical questions about consciousness await your discovery.
+                </p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">✍️</div>
+                <h3>Real-Time Editing</h3>
+                <p>
+                    Watch the story evolve as multiple players contribute simultaneously. Edit, refine,
+                    and branch narratives on the fly. Create alternate timelines, explore what-if scenarios,
+                    and see how collective creativity shapes the edge of the story.
+                </p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">♾️</div>
+                <h3>Endless Possibilities</h3>
+                <p>
+                    No predetermined ending. No fixed path. The story continues as long as players engage
+                    with it, creating an ever-expanding universe of interconnected narratives, characters,
+                    and worlds that exist at the perpetual edge of creation.
+                </p>
+            </div>
+
+            <div class="feature">
+                <div class="feature-icon">🎭</div>
+                <h3>Be the Author</h3>
+                <p>
+                    Every participant is a co-creator of this vast narrative ecosystem. Your contributions
+                    matter, your characters live on, and your ideas become part of the permanent fabric
+                    of The Edge Story universe.
+                </p>
+            </div>
+        </div>
+
+        <section class="tech-stack">
+            <h2>Built on Cutting-Edge Technology</h2>
+            <div class="tech-grid">
+                <div class="tech-item">
+                    <strong>Large Language Models</strong>
+                    Advanced AI for dynamic narrative generation and contextual storytelling
+                </div>
+                <div class="tech-item">
+                    <strong>Real-Time Collaboration</strong>
+                    WebSocket-based synchronization for instant multi-player editing
+                </div>
+                <div class="tech-item">
+                    <strong>Cloud Infrastructure</strong>
+                    Scalable Kubernetes platform ensuring global availability
+                </div>
+                <div class="tech-item">
+                    <strong>Persistent Universe</strong>
+                    Distributed databases storing the ever-growing narrative cosmos
+                </div>
+            </div>
+        </section>
+
+        <section class="cta">
+            <a href="#waitlist" class="cta-button">Join the Cosmic Journey</a>
+            <p class="cta-subtitle">Early access coming soon. The edge awaits.</p>
+        </section>
+
+        <footer>
+            <div class="footer-links">
+                <a href="/privacy-policy.html">Privacy Policy</a>
+                <a href="/terms-of-service.html">Terms of Service</a>
+                <a href="https://grafana.theedgestory.org">Status</a>
+            </div>
+            <div class="copyright">
+                &copy; 2024-2025 The Edge Story. All rights reserved.<br>
+                All content, narratives, and creative works generated within The Edge Story platform
+                are property of The Edge Story.
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Generate random stars
+        function createStars() {
+            const starsContainer = document.getElementById('stars');
+            const starCount = 100;
+
+            for (let i = 0; i < starCount; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                star.style.animationDuration = (2 + Math.random() * 3) + 's';
+                starsContainer.appendChild(star);
+            }
+        }
+
+        createStars();
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
