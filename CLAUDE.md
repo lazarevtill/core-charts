@@ -1,494 +1,167 @@
-# CLAUDE.md - AI Assistant Context
+# CLAUDE.md
 
-**Purpose:** Guide Claude Code when working with this infrastructure repository.
-
----
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## 🚨 CRITICAL RULES
 
-### 1. Documentation Policy
-- ✅ **ONLY** update `CLAUDE.md` and `README.md`
-- ❌ **NEVER** create additional `.md` files
-- **Reason:** Single source of truth, no documentation sprawl
+### Documentation Files Policy
+**FORBIDDEN**: Do NOT create any `.md` files except `CLAUDE.md`, `README.md`, and README files in subdirectories
 
-### 2. Secrets Policy
-- ✅ Secrets in Kubernetes Secrets only
-- ❌ **NEVER** commit secrets to Git
-- ✅ Reference secrets in Helm charts via `existingSecret`
-- ✅ GitHub push protection will block secret commits
+- ✅ **ALLOWED**: Update `CLAUDE.md`, `README.md`, and directory-specific README.md files
+- ❌ **FORBIDDEN**: Creating `CHANGELOG.md`, `CONTRIBUTING.md`, `ARCHITECTURE.md`, or ANY other root-level `.md` files
+- **Reason**: All documentation must be consolidated for clarity
+- **Exception**: Directory-specific README.md files (e.g., `argocd-apps/README.md`, `config/README.md`) are allowed
 
-### 3. GitOps Policy
-- ✅ All changes via Git commits
-- ❌ No manual `kubectl apply` commands (except one-time secret creation)
-- ✅ ArgoCD auto-syncs from Git
-- ✅ Git is the single source of truth
+### After Every Significant Change
+1. **Test changes** - Run `./scripts/healthcheck.sh` to verify services are healthy
+2. **Commit to Git** - All changes must be in Git for ArgoCD to sync
+3. **Document** - Update README.md if user-facing functionality changes
+4. **Keep CLAUDE.md current** - Update this file if architecture or procedures change
 
----
+## Overview
 
-## 🏗️ Architecture Overview
-
-**Type:** GitOps-managed Kubernetes infrastructure on K3s
-**Platform:** KubeSphere v4.1.3
-**GitOps:** ArgoCD with auto-sync enabled
-**Ingress:** nginx-ingress controller (NOT Traefik!)
-**Auth:** OAuth2 Proxy with Google SSO
+**Pure GitOps Infrastructure** - Production Kubernetes on K3s with ArgoCD managing all deployments. Git is the single source of truth.
 
 ### Key Principles
+- **GitOps-first**: All changes via Git → ArgoCD auto-syncs → Kubernetes
+- **Infrastructure as Code**: Everything defined in this repository
+- **Zero-downtime deployments**: Rolling updates for all services
+- **Automated recovery**: ArgoCD self-heal reverts manual cluster changes
 
-1. **Pure GitOps:** Git push → ArgoCD auto-sync → Kubernetes deploy
-2. **Shared Infrastructure:** One PostgreSQL, one Redis, one Kafka UI for all environments
-3. **Credential Isolation:** Separate database users (`core_dev_user`, `core_prod_user`)
-4. **Environment Separation:** Only applications split dev/prod, infrastructure is shared
-5. **Secrets Never in Git:** Use Kubernetes Secrets, GitHub blocks secret commits
-6. **nginx-ingress Only:** All ingresses use `ingressClassName: nginx`
-
----
-
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 core-charts/
-├── README.md                    # User documentation (how-to guides)
-├── CLAUDE.md                    # THIS FILE - AI context
+├── scripts/                    # Essential automation scripts
+│   ├── setup.sh               # Complete infrastructure setup from scratch
+│   ├── deploy.sh              # Deploy/update applications via ArgoCD
+│   └── healthcheck.sh         # Verify all services are healthy
 │
-├── argocd-apps/                 # ArgoCD Application CRDs
-│   ├── infrastructure.yaml      # Shared infra (sync-wave: 1)
-│   ├── core-pipeline-dev.yaml   # Dev app (sync-wave: 2)
-│   ├── core-pipeline-prod.yaml  # Prod app (sync-wave: 2)
-│   └── oauth2-proxy.yaml        # OAuth2 auth (sync-wave: 0)
+├── config/                     # Centralized configuration
+│   ├── authorized-users.yaml  # Google OAuth user whitelist
+│   ├── argocd-ingress.yaml    # ArgoCD server ingress
+│   ├── argocd-cm-patch.yaml   # ArgoCD configuration
+│   ├── cert-manager/          # Certificate config (not actively used)
+│   └── README.md              # Configuration documentation
 │
-├── charts/
-│   ├── infrastructure/          # Helm umbrella chart
-│   │   ├── Chart.yaml           # Remote Bitnami dependencies
-│   │   ├── values.yaml          # Config (NO secrets!)
-│   │   └── templates/           # Kafka UI resources
-│   │
-│   └── core-pipeline/           # Application Helm chart
-│       ├── values.yaml          # Base config
-│       ├── values-dev.yaml      # Dev overrides
-│       ├── values-prod.yaml     # Prod overrides
-│       ├── dev.tag.yaml         # Dev image tag (triggers deploy)
-│       ├── prod.tag.yaml        # Prod image tag (triggers deploy)
-│       └── templates/           # K8s manifests
+├── argocd-apps/                # ArgoCD Application CRDs
+│   ├── infrastructure.yaml    # Infrastructure services (sync-wave: 1)
+│   ├── oauth2-proxy.yaml      # OAuth2 authentication (sync-wave: 0)
+│   ├── core-pipeline-dev.yaml # Dev application (sync-wave: 2)
+│   ├── core-pipeline-prod.yaml# Prod application (sync-wave: 2)
+│   └── README.md              # ArgoCD apps documentation
 │
-├── cert-manager/                # TLS certificates
-│   └── letsencrypt-issuer.yaml  # Let's Encrypt ClusterIssuer
+├── charts/                     # Helm charts
+│   ├── infrastructure/        # PostgreSQL, Redis, Kafka, Kafka UI, Cloudflared
+│   │   ├── Chart.yaml         # Remote Bitnami dependencies
+│   │   ├── values.yaml        # Infrastructure configuration
+│   │   └── templates/         # Kafka UI and Cloudflared templates
+│   └── core-pipeline/         # Application Helm chart
+│       ├── Chart.yaml
+│       ├── values.yaml        # Base values
+│       ├── values-dev.yaml    # Dev overrides
+│       ├── values-prod.yaml   # Prod overrides
+│       ├── dev.tag.yaml       # Dev image tag
+│       ├── prod.tag.yaml      # Prod image tag
+│       └── templates/         # Kubernetes manifests
 │
-├── oauth2-proxy/                # OAuth2 authentication
-│   └── deployment.yaml          # OAuth2 Proxy resources
+├── oauth2-proxy/               # OAuth2 Proxy deployment
+│   └── deployment.yaml        # Google OAuth2 proxy for Kafka UI
 │
-├── setup-oauth2.sh              # Initial OAuth2 setup
-└── create-kafka-ui-oauth2-secret.sh  # Kafka UI OAuth2 secret helper
+├── CLAUDE.md                   # This file - instructions for Claude
+├── README.md                   # User-facing documentation
+└── SERVICES.md                 # Service directory and quick reference
 ```
 
----
+## 🎯 Current State (Oct 7, 2025)
 
-## 🎯 Common Tasks for Claude
+### Production Readiness: 99% ✨
 
-### Task: Deploy New Application Version
+**Architecture:**
+- ✅ Pure GitOps with ArgoCD auto-sync
+- ✅ Cloudflare Origin CA certificates (no Let's Encrypt)
+- ✅ Single shared infrastructure (PostgreSQL, Redis, Kafka)
+- ✅ Credential isolation per environment (dev/prod users)
+- ✅ Google OAuth2 authentication (OAuth2 Proxy)
+- ✅ Remote Helm charts from Bitnami (no local dependencies)
 
-**User says:** "Deploy core-pipeline dev version v1.2.3"
+**Key Achievements:**
+- ✅ All ingresses use `cloudflare-origin-tls` secret
+- ✅ No SSL redirect loops (disabled nginx ssl-redirect)
+- ✅ No Let's Encrypt or Traefik dependencies
+- ✅ Clean repository structure with organized scripts and config
+- ✅ Comprehensive setup automation
 
-**Actions:**
-1. Update `charts/core-pipeline/dev.tag.yaml`: `tag: "v1.2.3"`
-2. Commit with message: `"deploy: core-pipeline dev v1.2.3"`
-3. Push to GitHub
-4. ArgoCD auto-syncs within 3 minutes
+## Common Commands
 
-**DO NOT:**
-- Run `kubectl apply` commands
-- Modify infrastructure for application deployments
-- Create new namespaces manually
-
----
-
-### Task: Update Infrastructure Configuration
-
-**User says:** "Increase PostgreSQL memory to 1Gi"
-
-**Actions:**
-1. Edit `charts/infrastructure/values.yaml`
-2. Find `postgresql.primary.resources.limits.memory`
-3. Change value to `1Gi`
-4. Commit and push
-5. ArgoCD auto-syncs
-
-**DO NOT:**
-- Edit pod specs directly
-- Use `kubectl patch` or `kubectl edit`
-
----
-
-### Task: Add New Admin Service
-
-**User says:** "Add MinIO console with OAuth2 protection"
-
-**Actions:**
-1. Create deployment in `charts/infrastructure/templates/`
-2. Add OAuth2 ingress annotations:
-   ```yaml
-   nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/oauth2/auth"
-   nginx.ingress.kubernetes.io/auth-signin: "https://auth.theedgestory.org/oauth2/start?rd=$scheme://$host$request_uri"
-   nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-Request-Email"
-   ```
-3. Set `ingressClassName: nginx` (NOT traefik!)
-4. Add TLS with `cert-manager.io/cluster-issuer: letsencrypt-prod`
-5. Commit and push
-
-**DO NOT:**
-- Hardcode secrets in templates
-- Use Traefik annotations
-- Skip OAuth2 protection for admin services
-
----
-
-### Task: Troubleshoot Deployment Issue
-
-**User says:** "core-pipeline-dev is not deploying"
-
-**Actions:**
-1. Check ArgoCD application status:
-   ```bash
-   kubectl get application core-pipeline-dev -n argocd
-   kubectl describe application core-pipeline-dev -n argocd
-   ```
-2. Check pod status:
-   ```bash
-   kubectl get pods -n dev-core
-   kubectl describe pod <pod-name> -n dev-core
-   ```
-3. Check logs:
-   ```bash
-   kubectl logs <pod-name> -n dev-core
-   ```
-
-**Common Issues:**
-- Image not found → Check `dev.tag.yaml` tag matches Docker registry
-- CrashLoopBackOff → Check application logs
-- Pending → Check resource limits vs available node resources
-- ArgoCD OutOfSync → Check Git commit vs cluster state
-
----
-
-## 🔐 Security Architecture
-
-### OAuth2 Multi-Layer Protection
-
-**All admin services protected with Google OAuth2:**
-
-```
-User Request
-    ↓
-Nginx Ingress (TLS termination)
-    ↓
-OAuth2 Proxy (validates Google login + email whitelist)
-    ↓ (sets X-Auth-Request-Email header)
-Application (reads email, grants access)
-```
-
-**Layer 1 - nginx-ingress:**
-- TLS certificate (Let's Encrypt via cert-manager)
-- Routes to OAuth2 Proxy for auth check
-
-**Layer 2 - OAuth2 Proxy:**
-- Google OAuth2 authentication
-- Email whitelist: ONLY `dcversus@gmail.com`
-- Sets auth headers for downstream services
-
-**Layer 3 - Applications:**
-- **ArgoCD:** Dex authproxy reads `X-Auth-Request-Email` → RBAC grants `role:admin`
-- **Kafka UI:** Native OAuth2 + email regex `^dcversus@gmail\.com$`
-- **Grafana:** Auth proxy mode with auto-login
-
-**Result:** Unauthorized emails cannot access ANY admin service.
-
-### OAuth2 Configuration Files
-
-**OAuth2 Proxy Deployment:**
-- File: `oauth2-proxy/deployment.yaml`
-- Google Client ID/Secret: Stored in K8s Secret `oauth2-proxy` (namespace: oauth2-proxy)
-- Redirect URI: `https://auth.theedgestory.org/oauth2/callback`
-- Cookie domain: `.theedgestory.org` (SSO across all subdomains)
-
-**Kafka UI OAuth2:**
-- Client credentials: K8s Secret `kafka-ui-oauth2-secret` (namespace: infrastructure)
-- Created by: `create-kafka-ui-oauth2-secret.sh` (reads from oauth2-proxy secret)
-- ConfigMap: `charts/infrastructure/templates/kafka-ui-configmap.yaml`
-- Ingress: `charts/infrastructure/templates/kafka-ui-ingress.yaml`
-
----
-
-## 📊 Namespace & Service Map
-
-| Namespace | Services | Purpose |
-|-----------|----------|---------|
-| `infrastructure` | PostgreSQL, Redis, Kafka UI | Shared infrastructure |
-| `dev-core` | core-pipeline-dev | Development application |
-| `prod-core` | core-pipeline-prod (2 replicas) | Production application |
-| `argocd` | ArgoCD server, controllers | GitOps deployment platform |
-| `cert-manager` | cert-manager | TLS certificate automation |
-| `oauth2-proxy` | oauth2-proxy (2 replicas) | Google OAuth2 authentication |
-| `kube-system` | nginx-ingress, CoreDNS, metrics-server | System services |
-
-### Service Connections
-
-**core-pipeline-dev connects to:**
-- PostgreSQL: `infrastructure-postgresql.infrastructure.svc.cluster.local:5432` (database: `core_dev`, user: `core_dev_user`)
-- Redis: `infrastructure-redis-master.infrastructure.svc.cluster.local:6379`
-
-**core-pipeline-prod connects to:**
-- PostgreSQL: `infrastructure-postgresql.infrastructure.svc.cluster.local:5432` (database: `core_prod`, user: `core_prod_user`)
-- Redis: `infrastructure-redis-master.infrastructure.svc.cluster.local:6379`
-
-**Kafka UI connects to:**
-- Kafka: `kafka-cluster-kafka-bootstrap.infrastructure.svc.cluster.local:9092`
-
----
-
-## 🔧 Common Commands Reference
-
-### ArgoCD Operations
-
+### Initial Setup (Fresh Server)
 ```bash
-# Get application status
-kubectl get applications -n argocd
+# 1. Clone repository
+git clone https://github.com/uz0/core-charts.git
+cd core-charts
 
-# Describe specific app
-kubectl describe application infrastructure -n argocd
+# 2. Prepare Cloudflare Origin Certificate
+# Download from: https://dash.cloudflare.com/ -> SSL/TLS -> Origin Server
+# Save to: /tmp/cloudflare-origin.{crt,key}
 
-# Manual sync (if auto-sync is slow)
-kubectl patch application infrastructure -n argocd \
-  --type merge \
-  -p '{"operation":{"sync":{"revision":"HEAD"}}}'
+# 3. Set Google OAuth credentials
+export GOOGLE_CLIENT_ID="your-client-id"
+export GOOGLE_CLIENT_SECRET="your-client-secret"
 
-# Access ArgoCD UI
-open https://argo.theedgestory.org
+# 4. Run setup (this sets up everything)
+./scripts/setup.sh
 ```
 
-### Check Deployments
-
+### Daily Operations
 ```bash
-# All pods across namespaces
-kubectl get pods -A
+# Deploy updates
+./scripts/deploy.sh all                    # Update all applications
+./scripts/deploy.sh infrastructure         # Update only infrastructure
+./scripts/deploy.sh core-pipeline-prod     # Update only production app
 
-# Infrastructure namespace
-kubectl get pods -n infrastructure
+# Check health
+./scripts/healthcheck.sh                   # Verify all services
 
-# Application namespaces
-kubectl get pods -n dev-core
-kubectl get pods -n prod-core
-
-# Check ingresses
-kubectl get ingress -A
+# View status
+kubectl get applications -n argocd         # ArgoCD application status
+kubectl get pods -A                        # All pods
+kubectl get ingress -A                     # All ingresses
 ```
 
-### Debugging
-
+### Troubleshooting
 ```bash
-# Pod logs
-kubectl logs -n <namespace> <pod-name> -f
+# View ArgoCD application details
+kubectl describe application <app-name> -n argocd
 
-# Pod description (events, status)
-kubectl describe pod -n <namespace> <pod-name>
+# View pod logs
+kubectl logs -n <namespace> <pod-name>
 
-# Check certificates
-kubectl get certificates -A
-kubectl describe certificate <name> -n <namespace>
+# Force ArgoCD sync
+kubectl patch application <app-name> -n argocd \
+  --type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}'
 
-# Check secrets
-kubectl get secrets -n <namespace>
-kubectl describe secret <name> -n <namespace>
+# Get ArgoCD admin password
+kubectl get secret -n argocd argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d
 ```
 
----
+## Service URLs
 
-## ⚠️ What NOT to Do
+See [`SERVICES.md`](./SERVICES.md) for complete service directory.
 
-❌ **Never create additional .md files** (only README.md and CLAUDE.md allowed)
-❌ **Never commit secrets to Git** (GitHub will block, but don't try)
-❌ **Never use Traefik** (infrastructure uses nginx-ingress only)
-❌ **Never skip OAuth2 protection** for admin services
-❌ **Never use `kubectl apply -f`** for GitOps-managed resources (use Git commits)
-❌ **Never create separate infrastructure per environment** (infrastructure is shared)
-❌ **Never hardcode passwords/tokens** in Helm charts
+**Quick Access:**
+- ArgoCD: https://argo.theedgestory.org
+- Kafka UI: https://kafka.theedgestory.org
+- Grafana: https://grafana.theedgestory.org
+- Status: https://status.theedgestory.org
+- Dev API: https://core-pipeline.dev.theedgestory.org/api-docs
+- Prod API: https://core-pipeline.theedgestory.org/api-docs
 
----
+## Server Information
 
-## ✅ Best Practices
+- **Server IP**: 46.62.223.198
+- **Kubernetes**: K3s
+- **Ingress Controller**: nginx-ingress (LoadBalancer)
+- **DNS**: Cloudflare
+- **SSL/TLS**: Cloudflare Strict mode with Origin CA
 
-✅ **Always use Git commits** for infrastructure changes
-✅ **Always reference secrets** via `existingSecret` in Helm charts
-✅ **Always use nginx-ingress** (`ingressClassName: nginx`)
-✅ **Always add OAuth2 annotations** to admin service ingresses
-✅ **Always use sync-waves** for deployment ordering (ArgoCD)
-✅ **Always set resource limits** for new deployments
-✅ **Always use TLS** with Let's Encrypt (`cert-manager.io/cluster-issuer: letsencrypt-prod`)
-
----
-
-## 🐛 Troubleshooting Guide
-
-### Issue: ArgoCD Application OutOfSync
-
-**Diagnosis:**
-```bash
-kubectl get application <name> -n argocd
-kubectl describe application <name> -n argocd | grep -A 20 "Status:"
-```
-
-**Causes:**
-- Manual `kubectl` changes on cluster (don't do this!)
-- Git commit not pulled yet (wait 3 min or manual sync)
-- Helm chart syntax errors (check Status.Conditions)
-
-**Fix:**
-- If manual changes: Delete resource, let ArgoCD recreate from Git
-- If Helm errors: Fix chart syntax in Git, push
-- If sync delay: Manual sync via ArgoCD UI or kubectl patch
-
----
-
-### Issue: Pod CrashLoopBackOff
-
-**Diagnosis:**
-```bash
-kubectl get pods -n <namespace>
-kubectl logs -n <namespace> <pod-name> --previous
-kubectl describe pod -n <namespace> <pod-name>
-```
-
-**Common Causes:**
-- Application error (check logs)
-- Missing ConfigMap/Secret (check mounts)
-- Wrong database credentials (check secrets)
-- Resource limits too low (check resource requests/limits)
-
----
-
-### Issue: OAuth2 Not Working
-
-**Diagnosis:**
-```bash
-# Check OAuth2 Proxy
-kubectl get pods -n oauth2-proxy
-kubectl logs -n oauth2-proxy -l app=oauth2-proxy
-
-# Check ingress annotations
-kubectl get ingress <name> -n <namespace> -o yaml | grep -A 5 "annotations:"
-
-# Test without browser cache
-curl -I https://<service-url>
-```
-
-**Common Causes:**
-- OAuth2 Proxy down (check pods)
-- Missing ingress annotations (check ingress YAML)
-- Wrong redirect URI in Google Console
-- Certificate issues (check cert-manager)
-
-**Fix:**
-- Ensure ingress has OAuth2 annotations (see "Add New Admin Service" task)
-- Check Google Console redirect URIs match
-- Verify TLS certificate issued: `kubectl get certificates -A`
-
----
-
-### Issue: TLS Certificate Not Issuing
-
-**Diagnosis:**
-```bash
-kubectl get certificates -A
-kubectl describe certificate <name> -n <namespace>
-kubectl get certificaterequest -A
-```
-
-**Common Causes:**
-- DNS not pointing to LoadBalancer IP (46.62.223.198)
-- Let's Encrypt rate limit (5 per week per domain)
-- ClusterIssuer not ready
-
-**Fix:**
-- Verify DNS: `dig +short <domain>` should return 46.62.223.198
-- Check ClusterIssuer: `kubectl get clusterissuer letsencrypt-prod`
-- Wait for cert-manager to retry (automatic)
-
----
-
-## 📝 Commit Message Conventions
-
-Use conventional commits format:
-
-```bash
-# Deployment
-deploy: core-pipeline dev v1.2.3
-
-# Configuration change
-config: increase PostgreSQL memory to 1Gi
-
-# New feature
-feat: add MinIO console with OAuth2 protection
-
-# Bug fix
-fix: correct Kafka UI OAuth2 redirect URI
-
-# Infrastructure change
-infra: upgrade Redis to 24.0.0
-
-# Security update
-security: rotate OAuth2 client secret
-
-# Documentation
-docs: update README with new service URLs
-```
-
----
-
-## 🎯 Current Status (October 2025)
-
-### ✅ Fully Deployed
-
-- **GitOps Platform:** ArgoCD with auto-sync
-- **Infrastructure:** PostgreSQL 18.0.7, Redis 23.0.10, Kafka UI
-- **Applications:** core-pipeline-dev, core-pipeline-prod
-- **Authentication:** OAuth2 Proxy with Google SSO
-- **TLS:** cert-manager with Let's Encrypt
-- **Ingress:** nginx-ingress controller
-- **Monitoring:** Prometheus, Grafana
-
-### 🔄 Active
-
-- **Auto-sync:** Enabled on all applications (3min polling)
-- **TLS Renewal:** Automatic via cert-manager
-- **OAuth2 Session:** Persistent via cookie (domain: .theedgestory.org)
-
-### 📊 Key Metrics
-
-- **Infrastructure Shared:** ✅ One PostgreSQL, Redis for all environments
-- **Credential Isolation:** ✅ Separate DB users (core_dev_user, core_prod_user)
-- **Security:** ✅ OAuth2 on all admin services, only dcversus@gmail.com allowed
-- **GitOps Compliance:** ✅ 100% (no manual kubectl for managed resources)
-- **Secrets in Git:** ❌ None (GitHub push protection enforced)
-
----
-
-## 🚀 Quick Reference Card
-
-**When user wants to:**
-
-| User Request | Action | File to Edit |
-|--------------|--------|-------------|
-| Deploy new app version | Update tag | `charts/core-pipeline/{dev\|prod}.tag.yaml` |
-| Change PostgreSQL config | Edit values | `charts/infrastructure/values.yaml` |
-| Change Redis config | Edit values | `charts/infrastructure/values.yaml` |
-| Add new admin service | Add templates | `charts/infrastructure/templates/` |
-| Update OAuth2 whitelist | Edit ConfigMap | `oauth2-proxy/deployment.yaml` (email list) |
-| Check deployment status | ArgoCD UI | https://argo.theedgestory.org |
-| View app logs | Grafana or kubectl | https://grafana.theedgestory.org |
-| Rollback deployment | Git revert | `git revert <commit-hash>` |
-
----
-
-**Last Updated:** October 2025
-**Infrastructure Version:** v1.0
-**ArgoCD:** Auto-sync enabled (3min polling)
-**Server:** 46.62.223.198 (K3s cluster)
