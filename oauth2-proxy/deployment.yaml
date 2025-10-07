@@ -37,7 +37,6 @@ spec:
         image: quay.io/oauth2-proxy/oauth2-proxy:v7.7.1
         args:
           - --provider=google
-          - --email-domain=*
           - --authenticated-emails-file=/emails/authenticated-emails-list.txt
           - --upstream=file:///dev/null
           - --http-address=0.0.0.0:4180
