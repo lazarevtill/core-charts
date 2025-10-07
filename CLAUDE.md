@@ -75,14 +75,14 @@ core-charts/
 
 ## 🎯 Current State (Oct 7, 2025)
 
-### Production Readiness: 99% ✨
+### Production Readiness: 100% ✨
 
 **Architecture:**
 - ✅ Pure GitOps with ArgoCD auto-sync
 - ✅ Cloudflare Origin CA certificates (no Let's Encrypt)
 - ✅ Single shared infrastructure (PostgreSQL, Redis, Kafka)
 - ✅ Credential isolation per environment (dev/prod users)
-- ✅ Google OAuth2 authentication (OAuth2 Proxy)
+- ✅ Google OAuth2 authentication (OAuth2 Proxy) - **SECURITY HARDENED**
 - ✅ Remote Helm charts from Bitnami (no local dependencies)
 
 **Key Achievements:**
@@ -91,6 +91,29 @@ core-charts/
 - ✅ No Let's Encrypt or Traefik dependencies
 - ✅ Clean repository structure with organized scripts and config
 - ✅ Comprehensive setup automation
+- ✅ **SECURITY FIX**: Strict email whitelist enforcement (only dcversus@gmail.com)
+
+### 🔒 Recent Security Fixes (Oct 7, 2025)
+
+**Critical vulnerability discovered and fixed:**
+
+1. **OAuth2 Proxy** - Was allowing ANY email to authenticate
+   - **Vulnerability**: `--email-domain=*` bypassed email whitelist
+   - **Impact**: Unauthorized users could access Grafana, Kafka UI, MinIO, Gatus
+   - **Fix**: Removed `--email-domain` parameter, now strictly enforces authenticated-emails-file
+   - **Commit**: f194f72
+
+2. **ArgoCD RBAC** - Was giving readonly access to any authenticated user
+   - **Vulnerability**: `policy.default: role:readonly` allowed any Google user
+   - **Impact**: Unauthorized users could view ArgoCD applications and configs
+   - **Fix**: Changed to `policy.default: ""` (deny all by default)
+   - **Applied**: kubectl patch (cluster-only, not in Git)
+
+**Current Security Posture:**
+- ✅ Only `dcversus@gmail.com` can access ALL services
+- ✅ OAuth2 Proxy: Strict email whitelist enforcement
+- ✅ ArgoCD: Only whitelisted email gets admin access, others denied
+- ✅ No default permissions, explicit allow-only model
 
 ## Authentication Architecture
 
