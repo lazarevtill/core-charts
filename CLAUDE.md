@@ -231,3 +231,29 @@ See [`SERVICES.md`](./SERVICES.md) for complete service directory.
 - **DNS**: Cloudflare
 - **SSL/TLS**: Cloudflare Strict mode with Origin CA
 
+## ⚠️ CRITICAL: Infrastructure NOT in Git
+
+**Current GitOps Coverage: ~30%**
+
+These critical components are NOT tracked in repository and would be LOST in disaster recovery:
+
+### Platform (Manual)
+- ❌ cert-manager (cert-manager namespace)
+- ❌ nginx-ingress (ingress-nginx namespace)
+- ❌ cloudflare-operator (cloudflare-operator-system namespace)
+- ❌ minio-operator (minio-operator namespace)
+- ❌ MinIO tenant (minio namespace)
+
+### Monitoring Stack (Manual)
+- ❌ Prometheus, Grafana, Loki, Tempo (monitoring namespace)
+- ❌ Exporters: node, kafka, postgresql, redis
+- ❌ Gatus status page (status namespace)
+
+### In Git ✅
+- ✅ Infrastructure chart (PostgreSQL, Redis, Kafka, Kafka UI, Cloudflared)
+- ✅ Core Pipeline apps (dev/prod)
+- ✅ OAuth2 Proxy
+- ✅ ArgoCD Applications
+
+**Action Required**: Export manifests and add to repository for 100% GitOps compliance
+
