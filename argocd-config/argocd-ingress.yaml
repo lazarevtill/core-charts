@@ -10,10 +10,6 @@ metadata:
   name: argocd-server
   namespace: argocd
   annotations:
-    # TLS certificate management (Cloudflare DNS-01 challenge)
-    # This works with Cloudflare proxy enabled (orange cloud)
-    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
-
     # ArgoCD backend configuration
     nginx.ingress.kubernetes.io/backend-protocol: HTTP
     nginx.ingress.kubernetes.io/service-upstream: "true"
@@ -24,7 +20,7 @@ spec:
   tls:
   - hosts:
     - argo.theedgestory.org
-    secretName: argocd-server-tls
+    secretName: cloudflare-origin-tls
   rules:
   - host: argo.theedgestory.org
     http:

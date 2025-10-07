@@ -5,9 +5,6 @@ metadata:
   name: kafka-ui
   namespace: {{ .Release.Namespace }}
   annotations:
-    # TLS certificate management (Cloudflare DNS-01 challenge)
-    cert-manager.io/cluster-issuer: "letsencrypt-cloudflare"
-
     # OAuth2 Proxy authentication (Layer 1 - Ingress Level)
     nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/oauth2/auth"
     nginx.ingress.kubernetes.io/auth-signin: "https://auth.theedgestory.org/oauth2/start?rd=$scheme://$host$request_uri"
@@ -24,7 +21,7 @@ spec:
   tls:
   - hosts:
     - {{ .Values.kafkaUI.ingress.host }}
-    secretName: kafka-ui-tls
+    secretName: cloudflare-origin-tls
   rules:
   - host: {{ .Values.kafkaUI.ingress.host }}
     http:

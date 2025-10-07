@@ -121,14 +121,13 @@ metadata:
   name: oauth2-proxy
   namespace: oauth2-proxy
   annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
     nginx.ingress.kubernetes.io/proxy-buffer-size: "16k"
 spec:
   ingressClassName: nginx
   tls:
   - hosts:
     - auth.theedgestory.org
-    secretName: oauth2-proxy-tls
+    secretName: cloudflare-origin-tls
   rules:
   - host: auth.theedgestory.org
     http:
