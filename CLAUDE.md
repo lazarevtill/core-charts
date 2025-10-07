@@ -92,6 +92,49 @@ core-charts/
 - ✅ Clean repository structure with organized scripts and config
 - ✅ Comprehensive setup automation
 
+## Authentication Architecture
+
+### Two-Tier Authentication System
+
+**1. OAuth2 Proxy** (for Grafana, Kafka UI, MinIO, Gatus)
+- Google OAuth2 provider
+- Email whitelist: `dcversus@gmail.com`
+- Configured in: `oauth2-proxy/deployment.yaml`
+- Cookie domain: `.theedgestory.org` (shared SSO)
+- Required ingress annotations:
+  ```yaml
+  nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/oauth2/auth"
+  nginx.ingress.kubernetes.io/auth-signin: "https://auth.theedgestory.org/oauth2/start?rd=$scheme://$host$request_uri"
+  nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-Request-Email,Authorization"
+  ```
+
+**2. ArgoCD Dex** (for ArgoCD only)
+- Built-in Google OAuth via Dex connector
+- Email whitelist in `argocd-cm` ConfigMap: `allowedEmailAddresses`
+- ⚠️ **CRITICAL**: Never use OAuth2 Proxy for ArgoCD
+  - OAuth2 Proxy breaks ArgoCD's token-based API authentication
+  - Causes `401 Unauthorized - invalid session` errors
+  - ArgoCD has native Dex integration that works properly
+
+### Adding Authorized Users
+
+**OAuth2 Proxy Services:**
+```bash
+# Edit oauth2-proxy/deployment.yaml
+# Add email to authenticated-emails-list.txt
+kubectl apply -f oauth2-proxy/deployment.yaml
+kubectl rollout restart deployment oauth2-proxy -n oauth2-proxy
+```
+
+**ArgoCD:**
+```bash
+# Get ConfigMap, edit allowedEmailAddresses, apply
+kubectl get configmap argocd-cm -n argocd -o yaml > argocd-cm.yaml
+# Edit allowedEmailAddresses in dex.config
+kubectl apply -f argocd-cm.yaml
+kubectl rollout restart deployment argocd-dex-server argocd-server -n argocd
+```
+
 ## Common Commands
 
 ### Initial Setup (Fresh Server)

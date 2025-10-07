@@ -198,10 +198,89 @@ See [SERVICES.md](./SERVICES.md) for complete service directory.
 
 ## 🔒 Security
 
-### Authentication
-- **Google OAuth2** via OAuth2 Proxy for admin services
-- **Whitelist-based** access (see `config/authorized-users.yaml`)
-- **Single Sign-On** across all services (`.theedgestory.org` cookie)
+### Authentication Architecture
+
+The infrastructure uses **two complementary authentication systems** following industry best practices:
+
+#### 1. OAuth2 Proxy (General Services)
+**Protected Services:** Grafana, Kafka UI, MinIO Console, Gatus
+
+**How it works:**
+```
+User → Service URL → nginx-ingress → OAuth2 Proxy → Google OAuth → Email Whitelist ✓ → Service
+```
+
+**Configuration:**
+- Provider: Google OAuth
+- Email Whitelist: `dcversus@gmail.com` (configurable in `oauth2-proxy/deployment.yaml`)
+- Cookie Domain: `.theedgestory.org` (shared SSO across all services)
+- Whitelist Domain: `.theedgestory.org`
+
+**Ingress Annotations Required:**
+```yaml
+nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/oauth2/auth"
+nginx.ingress.kubernetes.io/auth-signin: "https://auth.theedgestory.org/oauth2/start?rd=$scheme://$host$request_uri"
+nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-Request-Email,Authorization"
+```
+
+#### 2. ArgoCD Dex (GitOps Platform)
+**Protected Service:** ArgoCD Server and API
+
+**Why not OAuth2 Proxy?**
+❌ OAuth2 Proxy is **INCOMPATIBLE** with ArgoCD because:
+- ArgoCD uses token-based API authentication for CLI and UI
+- OAuth2 Proxy intercepts requests and breaks ArgoCD's auth tokens
+- Result: `401 Unauthorized - invalid session`
+
+✅ ArgoCD has **built-in SSO via Dex** (Google OAuth connector)
+
+**Configuration:**
+- Configured in `argocd-cm` ConfigMap
+- Uses Dex Google connector with `allowedEmailAddresses`
+- Proper integration with ArgoCD CLI and API authentication
+- Access via "LOG IN VIA GOOGLE" button
+
+**Current Whitelist:**
+```yaml
+allowedEmailAddresses:
+- dcversus@gmail.com
+```
+
+### Adding Authorized Users
+
+**For OAuth2 Proxy Services (Grafana, Kafka UI, MinIO, Gatus):**
+```bash
+# 1. Edit oauth2-proxy/deployment.yaml
+vim oauth2-proxy/deployment.yaml
+# Add email to authenticated-emails-list.txt
+
+# 2. Apply and restart
+kubectl apply -f oauth2-proxy/deployment.yaml
+kubectl rollout restart deployment oauth2-proxy -n oauth2-proxy
+```
+
+**For ArgoCD:**
+```bash
+# 1. Get ConfigMap
+kubectl get configmap argocd-cm -n argocd -o yaml > argocd-cm.yaml
+
+# 2. Edit allowedEmailAddresses in dex.config
+vim argocd-cm.yaml
+
+# 3. Apply and restart
+kubectl apply -f argocd-cm.yaml
+kubectl rollout restart deployment argocd-dex-server -n argocd
+kubectl rollout restart deployment argocd-server -n argocd
+```
+
+### Security Best Practices Applied
+
+✅ **Email Whitelisting** - Explicit list (not domain-based) for maximum control
+✅ **Multi-Layer Architecture** - Different auth for different service types
+✅ **Single Sign-On** - Shared cookie domain for seamless experience
+✅ **Secure Credentials** - OAuth secrets in Kubernetes Secrets (never in Git)
+✅ **TLS Enforcement** - All ingresses require HTTPS
+✅ **No Default Passwords** - All services require OAuth authentication
 
 ### TLS/SSL
 - **Cloudflare Origin CA** certificates (valid until 2040)
