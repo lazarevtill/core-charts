@@ -13,6 +13,12 @@ metadata:
   {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls }}
+  tls:
+  - hosts:
+    - {{ .Values.ingress.altHost }}
+    secretName: {{ include "core-pipeline.fullname" . }}-alt-tls
+  {{- end }}
   rules:
   - host: {{ .Values.ingress.altHost }}
     http:

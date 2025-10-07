@@ -62,11 +62,16 @@ ingress:
   className: nginx
   annotations:
     nginx.ingress.kubernetes.io/service-upstream: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-cloudflare
   hosts:
     - host: core-pipeline.dev.theedgestory.org
       paths:
         - path: /
           pathType: Prefix
+  tls:
+    - secretName: core-pipeline-dev-tls
+      hosts:
+        - core-pipeline.dev.theedgestory.org
   altHost: core-pipeline-dev.theedgestory.org  # Alternate hostname with hyphen
 resources:
   requests:
