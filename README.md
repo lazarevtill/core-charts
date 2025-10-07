@@ -262,10 +262,15 @@ MinIO uses traditional admin authentication:
 
 **RBAC Policy:**
 ```yaml
-policy.csv: |
-  g, dcversus@gmail.com, role:admin
-policy.default: ""  # Deny all by default
+policy.csv: g, dcversus@gmail.com, role:admin
+scopes: '[groups, email]'
+# NO policy.default - deny all by default
 ```
+
+**How it works:**
+- `dcversus@gmail.com` → `role:admin` → Full access to all applications
+- Any other user → No policy → **Denied by default** (no permissions)
+- Without `policy.default`, ArgoCD denies all access to users without explicit policies
 
 ⚠️ **Note**: Dex Google connector does not support email whitelisting (only `hostedDomains` for G Suite). Access control is enforced at ArgoCD RBAC level.
 
