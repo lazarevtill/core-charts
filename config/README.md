@@ -40,10 +40,6 @@ ConfigMap patch for ArgoCD configuration (repository settings, etc.).
 kubectl apply -f config/argocd-cm-patch.yaml
 ```
 
-### `cert-manager/`
-Certificate manager configuration (currently not used - we use Cloudflare Origin certificates).
-
-**Note**: These files are kept for reference but are not actively used. All ingresses now use the `cloudflare-origin-tls` secret.
 
 ## Usage in Scripts
 
