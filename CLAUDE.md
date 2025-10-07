@@ -231,29 +231,48 @@ See [`SERVICES.md`](./SERVICES.md) for complete service directory.
 - **DNS**: Cloudflare
 - **SSL/TLS**: Cloudflare Strict mode with Origin CA
 
-## ⚠️ CRITICAL: Infrastructure NOT in Git
+## ✅ Infrastructure 100% in Git
 
-**Current GitOps Coverage: ~30%**
+**Current GitOps Coverage: 100%** 🎉
 
-These critical components are NOT tracked in repository and would be LOST in disaster recovery:
+All infrastructure components are now tracked in the repository:
 
-### Platform (Manual)
-- ❌ cert-manager (cert-manager namespace)
-- ❌ nginx-ingress (ingress-nginx namespace)
-- ❌ cloudflare-operator (cloudflare-operator-system namespace)
-- ❌ minio-operator (minio-operator namespace)
-- ❌ MinIO tenant (minio namespace)
-
-### Monitoring Stack (Manual)
-- ❌ Prometheus, Grafana, Loki, Tempo (monitoring namespace)
-- ❌ Exporters: node, kafka, postgresql, redis
-- ❌ Gatus status page (status namespace)
-
-### In Git ✅
+### ArgoCD-Managed (charts/)
 - ✅ Infrastructure chart (PostgreSQL, Redis, Kafka, Kafka UI, Cloudflared)
 - ✅ Core Pipeline apps (dev/prod)
 - ✅ OAuth2 Proxy
 - ✅ ArgoCD Applications
 
-**Action Required**: Export manifests and add to repository for 100% GitOps compliance
+### Platform Components (k8s/)
+- ✅ cert-manager → `k8s/cert-manager/`
+- ✅ nginx-ingress → `k8s/nginx-ingress/`
+- ✅ cloudflare-operator → `k8s/cloudflare-operator/`
+- ✅ MinIO operator & tenant → `k8s/minio/`
+- ✅ Monitoring stack → `k8s/monitoring/monitoring-stack.yaml`
+- ✅ Gatus status page → `k8s/monitoring/gatus.yaml`
+
+### Disaster Recovery
+
+**To rebuild entire infrastructure from scratch:**
+```bash
+# 1. Install K3s
+curl -sfL https://get.k3s.io | sh -
+
+# 2. Install platform
+kubectl apply -f k8s/cert-manager/
+kubectl apply -f k8s/nginx-ingress/
+kubectl apply -f k8s/minio/minio-operator.yaml
+kubectl apply -f k8s/minio/minio-tenant.yaml
+
+# 3. Install monitoring
+kubectl apply -f k8s/monitoring/
+
+# 4. Install ArgoCD
+kubectl apply -f argocd-install.yaml
+
+# 5. Deploy applications
+kubectl apply -f argocd-apps/
+```
+
+See `k8s/README.md` for detailed instructions.
 
