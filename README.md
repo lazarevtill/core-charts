@@ -229,22 +229,15 @@ nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-R
 #### 3. MinIO Native OIDC (Object Storage)
 **Protected Service:** MinIO Console
 
-MinIO has its own Google OIDC integration:
-- Native "Log in with Google" button in MinIO console
-- Uses same Google OAuth credentials as OAuth2 Proxy
-- Also supports traditional admin login
+MinIO uses traditional admin authentication:
+- **Username**: `admin`
+- **Password**: `minio-admin-password-2024`
+- Access: https://s3-admin.theedgestory.org
 
-**Credentials:**
-- Username: `admin`
-- Password: `minio-admin-password-2024`
-- Or: "Log in with Google" button
-
-**Why not OAuth2 Proxy for MinIO?**
-- MinIO has its own session management
-- OAuth2 Proxy causes redirect loops with MinIO's internal auth
-- MinIO OIDC integration is the proper solution
-
-⚠️ **Note**: MinIO OIDC currently accepts any Google account. To restrict to specific emails, configure MinIO policies after login.
+**Why not OAuth2 Proxy or Google OIDC for MinIO?**
+- OAuth2 Proxy causes redirect loops with MinIO's session management
+- Google OIDC accepts ANY Google account (no email whitelisting)
+- Admin-only login provides strictest security control
 
 **Why not OAuth2 Proxy for ArgoCD?**
 ❌ OAuth2 Proxy is **INCOMPATIBLE** with ArgoCD because:
@@ -260,15 +253,25 @@ MinIO has its own Google OIDC integration:
 - Proper integration with ArgoCD CLI and API authentication
 - Access via "LOG IN VIA GOOGLE" button
 
-**Current Whitelist:**
+**Access Control:**
+- Dex Google connector authenticates ANY Google account (no email filtering at Dex level)
+- ArgoCD RBAC enforces access control:
+  - Only `dcversus@gmail.com` has `role:admin` (full access)
+  - All other users: `policy.default: ""` (no permissions)
+- Unauthorized users can login but see empty UI with no applications/resources
+
+**RBAC Policy:**
 ```yaml
-allowedEmailAddresses:
-- dcversus@gmail.com
+policy.csv: |
+  g, dcversus@gmail.com, role:admin
+policy.default: ""  # Deny all by default
 ```
+
+⚠️ **Note**: Dex Google connector does not support email whitelisting (only `hostedDomains` for G Suite). Access control is enforced at ArgoCD RBAC level.
 
 ### Adding Authorized Users
 
-**For OAuth2 Proxy Services (Grafana, Kafka UI, MinIO, Gatus):**
+**For OAuth2 Proxy Services (Grafana, Kafka UI, Gatus):**
 ```bash
 # 1. Edit oauth2-proxy/deployment.yaml
 vim oauth2-proxy/deployment.yaml
@@ -281,16 +284,21 @@ kubectl rollout restart deployment oauth2-proxy -n oauth2-proxy
 
 **For ArgoCD:**
 ```bash
-# 1. Get ConfigMap
-kubectl get configmap argocd-cm -n argocd -o yaml > argocd-cm.yaml
+# 1. Edit RBAC policy to add user
+kubectl edit configmap argocd-rbac-cm -n argocd
+# Add: g, newuser@example.com, role:admin
 
-# 2. Edit allowedEmailAddresses in dex.config
-vim argocd-cm.yaml
-
-# 3. Apply and restart
-kubectl apply -f argocd-cm.yaml
-kubectl rollout restart deployment argocd-dex-server -n argocd
+# 2. Restart ArgoCD server to apply RBAC
 kubectl rollout restart deployment argocd-server -n argocd
+```
+
+**For MinIO:**
+```bash
+# Login with admin credentials:
+# URL: https://s3-admin.theedgestory.org
+# Username: admin
+# Password: minio-admin-password-2024
+# Then create users via MinIO console
 ```
 
 ### Security Best Practices Applied
