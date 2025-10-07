@@ -203,7 +203,7 @@ See [SERVICES.md](./SERVICES.md) for complete service directory.
 The infrastructure uses **two complementary authentication systems** following industry best practices:
 
 #### 1. OAuth2 Proxy (General Services)
-**Protected Services:** Grafana, Kafka UI, MinIO Console, Gatus
+**Protected Services:** Grafana, Kafka UI, Gatus
 
 **How it works:**
 ```
@@ -226,7 +226,27 @@ nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-R
 #### 2. ArgoCD Dex (GitOps Platform)
 **Protected Service:** ArgoCD Server and API
 
-**Why not OAuth2 Proxy?**
+#### 3. MinIO Native OIDC (Object Storage)
+**Protected Service:** MinIO Console
+
+MinIO has its own Google OIDC integration:
+- Native "Log in with Google" button in MinIO console
+- Uses same Google OAuth credentials as OAuth2 Proxy
+- Also supports traditional admin login
+
+**Credentials:**
+- Username: `admin`
+- Password: `minio-admin-password-2024`
+- Or: "Log in with Google" button
+
+**Why not OAuth2 Proxy for MinIO?**
+- MinIO has its own session management
+- OAuth2 Proxy causes redirect loops with MinIO's internal auth
+- MinIO OIDC integration is the proper solution
+
+⚠️ **Note**: MinIO OIDC currently accepts any Google account. To restrict to specific emails, configure MinIO policies after login.
+
+**Why not OAuth2 Proxy for ArgoCD?**
 ❌ OAuth2 Proxy is **INCOMPATIBLE** with ArgoCD because:
 - ArgoCD uses token-based API authentication for CLI and UI
 - OAuth2 Proxy intercepts requests and breaks ArgoCD's auth tokens
