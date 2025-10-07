@@ -62,7 +62,6 @@ ingress:
   className: nginx
   annotations:
     nginx.ingress.kubernetes.io/service-upstream: "true"
-    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
   hosts:
     - host: core-pipeline.dev.theedgestory.org
       paths:
