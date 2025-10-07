@@ -15,9 +15,11 @@ spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- if .Values.ingress.tls }}
   tls:
+  {{- range .Values.ingress.tls }}
   - hosts:
-    - {{ .Values.ingress.altHost }}
-    secretName: {{ include "core-pipeline.fullname" . }}-alt-tls
+    - {{ $.Values.ingress.altHost }}
+    secretName: {{ .secretName }}
+  {{- end }}
   {{- end }}
   rules:
   - host: {{ .Values.ingress.altHost }}
