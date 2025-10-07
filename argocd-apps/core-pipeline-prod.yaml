@@ -13,7 +13,7 @@ spec:
     path: charts/core-pipeline
     helm:
       valueFiles:
-        - values-prod.yaml
+        - values.prod.yml
         - prod.tag.yaml
   destination:
     server: https://kubernetes.default.svc

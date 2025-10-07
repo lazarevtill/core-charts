@@ -13,7 +13,7 @@ spec:
     path: charts/core-pipeline
     helm:
       valueFiles:
-        - values-dev.yaml
+        - values.dev.yml
         - dev.tag.yaml
   destination:
     server: https://kubernetes.default.svc
