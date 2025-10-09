@@ -51,10 +51,7 @@ authentik:
       annotations:
         cert-manager.io/cluster-issuer: "letsencrypt-prod"
       hosts:
-        - host: auth.theedgestory.org
-          paths:
-            - path: /
-              pathType: Prefix
+        - auth.theedgestory.org
       tls:
         - secretName: authentik-tls
           hosts:
