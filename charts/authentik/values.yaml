@@ -13,6 +13,9 @@ authentik:
         value: "true"
       - name: AUTHENTIK_AVATARS
         value: "gravatar"
+      # Cookie and domain settings for proper HTTPS handling
+      - name: AUTHENTIK_COOKIE_DOMAIN
+        value: "theedgestory.org"
       # External PostgreSQL connection
       - name: AUTHENTIK_POSTGRESQL__HOST
         value: "infrastructure-postgresql.infrastructure.svc.cluster.local"
