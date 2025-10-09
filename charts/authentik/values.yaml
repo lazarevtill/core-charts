@@ -26,6 +26,9 @@ authentik:
         value: "true"
       - name: AUTHENTIK_USE_X_FORWARDED_PORT
         value: "true"
+      # CSRF trusted origins
+      - name: AUTHENTIK_CSRF_TRUSTED_ORIGINS
+        value: "https://auth.theedgestory.org,http://authentik-server.authentik.svc.cluster.local"
       # External PostgreSQL connection
       - name: AUTHENTIK_POSTGRESQL__HOST
         value: "10.42.0.86"
