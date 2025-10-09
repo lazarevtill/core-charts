@@ -15,8 +15,8 @@ This repository contains the complete infrastructure-as-code for The Edge Story 
 ###Key Features:
 - ✅ **Pure GitOps**: Git push → Auto-deploy (no manual kubectl needed)
 - ✅ **Zero-downtime deployments**: Rolling updates for all services
-- ✅ **Cloudflare Origin CA**: Secure TLS without Let's Encrypt complexity
-- ✅ **Google OAuth2 SSO**: Unified authentication across all admin services
+- ✅ **TLS Certificates**: Let's Encrypt via cert-manager
+- ✅ **Authentik SSO**: Modern identity provider with Google OAuth support
 - ✅ **Shared infrastructure**: One PostgreSQL, Redis, and Kafka for all environments
 
 ---
@@ -30,29 +30,25 @@ This repository contains the complete infrastructure-as-code for The Edge Story 
 git clone https://github.com/uz0/core-charts.git
 cd core-charts
 
-# 2. Prepare Cloudflare Origin Certificate
-# Get from: https://dash.cloudflare.com/ -> SSL/TLS -> Origin Server
-# Save to: /tmp/cloudflare-origin.crt and /tmp/cloudflare-origin.key
+# 2. Install K3s and ArgoCD (if not already installed)
+curl -sfL https://get.k3s.io | sh -
+kubectl apply -k k8s/argocd/
 
-# 3. Set Google OAuth credentials
-export GOOGLE_CLIENT_ID="your-google-client-id"
-export GOOGLE_CLIENT_SECRET="your-google-client-secret"
+# 3. Deploy infrastructure and applications
+kubectl apply -f argocd-apps/
 
-# 4. Run setup script
-./scripts/setup.sh
+# 4. Setup Authentik Google OAuth (after Authentik is running)
+# Get Google OAuth credentials from https://console.cloud.google.com
+./setup-authentik-oauth.sh YOUR_CLIENT_ID YOUR_CLIENT_SECRET
 ```
 
-That's it! The script will:
-- Create TLS secrets in all namespaces
-- Setup OAuth2 Proxy with Google authentication
-- Configure authorized users
-- Deploy all ArgoCD applications
-- Wait for services to be ready
-
 **Access services at:**
+- Authentik SSO: https://auth.theedgestory.org (akadmin/Admin123!)
 - ArgoCD: https://argo.theedgestory.org
 - Dev App: https://core-pipeline.dev.theedgestory.org/api-docs
 - Prod App: https://core-pipeline.theedgestory.org/api-docs
+- Grafana: https://grafana.dev.theedgestory.org
+- Status Page: https://status.theedgestory.org
 
 ---
 
@@ -200,34 +196,30 @@ See [SERVICES.md](./SERVICES.md) for complete service directory.
 
 ### Authentication Architecture
 
-The infrastructure uses **two complementary authentication systems** following industry best practices:
+The infrastructure uses **Authentik** as the centralized identity provider with Google OAuth integration:
 
-#### 1. OAuth2 Proxy (General Services)
-**Protected Services:** Grafana, Kafka UI, Gatus
+#### Authentik SSO Portal
+**URL:** https://auth.theedgestory.org
+**Admin:** akadmin/Admin123!
 
-**How it works:**
-```
-User → Service URL → nginx-ingress → OAuth2 Proxy → Google OAuth → Email Whitelist ✓ → Service
-```
+**Features:**
+- Google OAuth integration for user authentication
+- OIDC provider for modern applications (ArgoCD, Grafana, Kafka UI)
+- LDAP outpost for legacy applications (MinIO)
+- Centralized user management and access policies
 
-**Configuration:**
-- Provider: Google OAuth
-- Email Whitelist: `dcversus@gmail.com` (configurable in `oauth2-proxy/deployment.yaml`)
-- Cookie Domain: `.theedgestory.org` (shared SSO across all services)
-- Whitelist Domain: `.theedgestory.org`
-
-**Ingress Annotations Required:**
-```yaml
-nginx.ingress.kubernetes.io/auth-url: "http://oauth2-proxy.oauth2-proxy.svc.cluster.local:4180/oauth2/auth"
-nginx.ingress.kubernetes.io/auth-signin: "https://auth.theedgestory.org/oauth2/start?rd=$scheme://$host$request_uri"
-nginx.ingress.kubernetes.io/auth-response-headers: "X-Auth-Request-User,X-Auth-Request-Email,Authorization"
+**Setup Google OAuth:**
+```bash
+# Run after Authentik is deployed
+./setup-authentik-oauth.sh YOUR_CLIENT_ID YOUR_CLIENT_SECRET
 ```
 
-#### 2. ArgoCD Dex (GitOps Platform)
-**Protected Service:** ArgoCD Server and API
-
-#### 3. MinIO Native OIDC (Object Storage)
-**Protected Service:** MinIO Console
+**Services to be migrated to Authentik:**
+- ✅ Google OAuth configured as upstream provider
+- ⏳ ArgoCD (pending OIDC application setup)
+- ⏳ Grafana (pending OIDC application setup)
+- ⏳ Kafka UI (pending OIDC application setup)
+- ⏳ MinIO (pending LDAP outpost setup)
 
 MinIO uses traditional admin authentication:
 - **Username**: `admin`
