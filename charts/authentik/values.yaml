@@ -19,6 +19,13 @@ authentik:
       # External URL configuration
       - name: AUTHENTIK_HOST
         value: "https://auth.theedgestory.org"
+      # Trust proxy headers from nginx/cloudflare
+      - name: AUTHENTIK_USE_X_FORWARDED_FOR
+        value: "true"
+      - name: AUTHENTIK_USE_X_FORWARDED_PROTO
+        value: "true"
+      - name: AUTHENTIK_USE_X_FORWARDED_PORT
+        value: "true"
       # External PostgreSQL connection
       - name: AUTHENTIK_POSTGRESQL__HOST
         value: "10.42.0.86"
