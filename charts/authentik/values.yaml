@@ -1,0 +1,88 @@
+authentik:
+  # Global Authentik configuration
+  global:
+    env:
+      - name: AUTHENTIK_SECRET_KEY
+        value: "authentik-secret-key-change-me-2024"  # TODO: Generate secure secret
+      - name: AUTHENTIK_ERROR_REPORTING__ENABLED
+        value: "false"
+      - name: AUTHENTIK_DISABLE_UPDATE_CHECK
+        value: "true"
+      - name: AUTHENTIK_DISABLE_STARTUP_ANALYTICS
+        value: "true"
+      - name: AUTHENTIK_AVATARS
+        value: "gravatar"
+
+  # PostgreSQL Configuration (use existing PostgreSQL)
+  postgresql:
+    enabled: false
+
+  # External PostgreSQL
+  env:
+    - name: AUTHENTIK_POSTGRESQL__HOST
+      value: "infrastructure-postgresql.infrastructure.svc.cluster.local"
+    - name: AUTHENTIK_POSTGRESQL__PORT
+      value: "5432"
+    - name: AUTHENTIK_POSTGRESQL__NAME
+      value: "authentik"
+    - name: AUTHENTIK_POSTGRESQL__USER
+      value: "authentik_user"
+    - name: AUTHENTIK_POSTGRESQL__PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: authentik-postgresql
+          key: password
+
+  # Redis Configuration (use existing Redis)
+  redis:
+    enabled: false
+
+  envFrom:
+    - secretRef:
+        name: authentik-redis
+
+  # Server configuration
+  server:
+    replicas: 1
+
+    ingress:
+      enabled: true
+      ingressClassName: nginx
+      annotations:
+        cert-manager.io/cluster-issuer: "letsencrypt-prod"
+      hosts:
+        - host: auth.theedgestory.org
+          paths:
+            - path: /
+              pathType: Prefix
+      tls:
+        - secretName: authentik-tls
+          hosts:
+            - auth.theedgestory.org
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  # Worker configuration
+  worker:
+    replicas: 1
+
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+  # Bootstrap configuration
+  bootstrap:
+    enabled: true
+    email: "dcversus@gmail.com"
+    password: "authentik-admin-password-2024"  # Initial admin password
+    token: "authentik-bootstrap-token-2024"
