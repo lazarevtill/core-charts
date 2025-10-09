@@ -2,6 +2,7 @@ authentik:
   # Global Authentik configuration
   global:
     env:
+      # Global settings
       - name: AUTHENTIK_SECRET_KEY
         value: "authentik-secret-key-change-me-2024"  # TODO: Generate secure secret
       - name: AUTHENTIK_ERROR_REPORTING__ENABLED
@@ -12,34 +13,33 @@ authentik:
         value: "true"
       - name: AUTHENTIK_AVATARS
         value: "gravatar"
+      # External PostgreSQL connection
+      - name: AUTHENTIK_POSTGRESQL__HOST
+        value: "infrastructure-postgresql.infrastructure.svc.cluster.local"
+      - name: AUTHENTIK_POSTGRESQL__PORT
+        value: "5432"
+      - name: AUTHENTIK_POSTGRESQL__NAME
+        value: "authentik"
+      - name: AUTHENTIK_POSTGRESQL__USER
+        value: "authentik_user"
+      - name: AUTHENTIK_POSTGRESQL__PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: authentik-postgresql
+            key: password
+
+    envFrom:
+      # External Redis connection
+      - secretRef:
+          name: authentik-redis
 
   # PostgreSQL Configuration (use existing PostgreSQL)
   postgresql:
     enabled: false
 
-  # External PostgreSQL
-  env:
-    - name: AUTHENTIK_POSTGRESQL__HOST
-      value: "infrastructure-postgresql.infrastructure.svc.cluster.local"
-    - name: AUTHENTIK_POSTGRESQL__PORT
-      value: "5432"
-    - name: AUTHENTIK_POSTGRESQL__NAME
-      value: "authentik"
-    - name: AUTHENTIK_POSTGRESQL__USER
-      value: "authentik_user"
-    - name: AUTHENTIK_POSTGRESQL__PASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: authentik-postgresql
-          key: password
-
   # Redis Configuration (use existing Redis)
   redis:
     enabled: false
-
-  envFrom:
-    - secretRef:
-        name: authentik-redis
 
   # Server configuration
   server:
