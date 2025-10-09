@@ -3,7 +3,7 @@
 
 # PostgreSQL (Bitnami)
 postgresql:
-  enabled: true
+  enabled: false
   auth:
     username: postgres
     password: "CHANGE_ME_postgres_password"
@@ -52,7 +52,7 @@ postgresql:
 
 # Redis (Bitnami)
 redis:
-  enabled: true
+  enabled: false
   architecture: standalone
   auth:
     enabled: true
