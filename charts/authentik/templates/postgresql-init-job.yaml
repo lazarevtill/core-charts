@@ -22,15 +22,16 @@ spec:
               sleep 2
             done
 
-            # Create user if not exists
+            # Create user if not exists, then update password
             psql -h "${POSTGRES_HOST}" -U "${POSTGRES_USER}" -d postgres <<-EOSQL
               DO \$\$
               BEGIN
                 IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'authentik_user') THEN
-                  CREATE ROLE authentik_user WITH LOGIN PASSWORD '${AUTHENTIK_PASSWORD}';
+                  CREATE ROLE authentik_user WITH LOGIN;
                 END IF;
               END
               \$\$;
+              ALTER ROLE authentik_user WITH LOGIN PASSWORD '${AUTHENTIK_PASSWORD}';
             EOSQL
 
             # Create database if not exists
