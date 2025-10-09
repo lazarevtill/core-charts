@@ -1,169 +1,194 @@
 #!/bin/bash
-# Complete Infrastructure Setup Script
-# This script sets up all infrastructure services from scratch on a fresh K3s cluster
+# Production Setup Script for The Edge Story Infrastructure
+# This script bootstraps a complete Kubernetes infrastructure from scratch
 
 set -e
 
-echo "=== Core Charts Infrastructure Setup ==="
-echo "This script will set up all infrastructure services"
-echo ""
-
 # Colors for output
-RED='\033[0:31m'
+RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+echo -e "${GREEN}=== The Edge Story Infrastructure Setup ===${NC}"
+echo ""
+
 # Check prerequisites
-check_prerequisites() {
-    echo "Checking prerequisites..."
+echo -e "${YELLOW}Checking prerequisites...${NC}"
+command -v kubectl >/dev/null 2>&1 || { echo -e "${RED}kubectl is required but not installed.${NC}" >&2; exit 1; }
+command -v helm >/dev/null 2>&1 || { echo -e "${RED}helm is required but not installed.${NC}" >&2; exit 1; }
+command -v git >/dev/null 2>&1 || { echo -e "${RED}git is required but not installed.${NC}" >&2; exit 1; }
 
-    command -v kubectl >/dev/null 2>&1 || { echo -e "${RED}kubectl is required but not installed${NC}"; exit 1; }
-    command -v git >/dev/null 2>&1 || { echo -e "${RED}git is required but not installed${NC}"; exit 1; }
+# Configuration
+GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID:-}"
+GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET:-}"
+ADMIN_EMAIL="${ADMIN_EMAIL:-dcversus@gmail.com}"
+DOMAIN="${DOMAIN:-theedgestory.org}"
 
-    # Check kubectl connection
-    kubectl cluster-info >/dev/null 2>&1 || { echo -e "${RED}Cannot connect to Kubernetes cluster${NC}"; exit 1; }
-
-    echo -e "${GREEN}✓ Prerequisites met${NC}"
-}
-
-# Create TLS secret from Cloudflare Origin Certificate
-setup_cloudflare_tls() {
+# Prompt for required secrets if not set
+if [ -z "$GOOGLE_CLIENT_ID" ] || [ -z "$GOOGLE_CLIENT_SECRET" ]; then
+    echo -e "${YELLOW}Google OAuth credentials required for SSO${NC}"
+    echo "Get these from: https://console.cloud.google.com"
     echo ""
-    echo "=== Setting up Cloudflare Origin TLS ==="
-
-    if [ ! -f "/tmp/cloudflare-origin.crt" ] || [ ! -f "/tmp/cloudflare-origin.key" ]; then
-        echo -e "${YELLOW}Cloudflare Origin certificate not found at /tmp/cloudflare-origin.{crt,key}${NC}"
-        echo "Please place your Cloudflare Origin certificate files there and re-run this script"
-        echo "You can get these from: https://dash.cloudflare.com/ -> SSL/TLS -> Origin Server"
-        exit 1
-    fi
-
-    # Create TLS secret in all namespaces
-    for namespace in argocd dev-core prod-core infrastructure monitoring oauth2-proxy status minio; do
-        kubectl create namespace $namespace --dry-run=client -o yaml | kubectl apply -f -
-        kubectl create secret tls cloudflare-origin-tls \
-            --cert=/tmp/cloudflare-origin.crt \
-            --key=/tmp/cloudflare-origin.key \
-            -n $namespace \
-            --dry-run=client -o yaml | kubectl apply -f -
-        echo -e "${GREEN}✓ Created TLS secret in $namespace${NC}"
-    done
-}
-
-# Setup OAuth2 Proxy with Google OAuth
-setup_oauth2() {
+    read -p "Enter Google OAuth Client ID: " GOOGLE_CLIENT_ID
+    read -s -p "Enter Google OAuth Client Secret: " GOOGLE_CLIENT_SECRET
     echo ""
-    echo "=== Setting up OAuth2 Proxy ==="
+fi
 
-    if [ -z "$GOOGLE_CLIENT_ID" ] || [ -z "$GOOGLE_CLIENT_SECRET" ]; then
-        echo -e "${YELLOW}Google OAuth credentials not set${NC}"
-        echo "Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables"
-        echo "You can get these from: https://console.cloud.google.com/apis/credentials"
-        exit 1
-    fi
+echo -e "${GREEN}Configuration:${NC}"
+echo "  Domain: $DOMAIN"
+echo "  Admin Email: $ADMIN_EMAIL"
+echo "  Google OAuth: Configured"
+echo ""
 
-    # Generate cookie secret
-    COOKIE_SECRET=$(openssl rand -base64 32 | tr -d /=+ | cut -c -32)
+# Install K3s if not present
+if ! kubectl cluster-info >/dev/null 2>&1; then
+    echo -e "${YELLOW}Installing K3s...${NC}"
+    curl -sfL https://get.k3s.io | sh -
+    sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+    export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+    echo "export KUBECONFIG=/etc/rancher/k3s/k3s.yaml" >> ~/.bashrc
+fi
 
-    # Create OAuth2 Proxy secret
-    kubectl create namespace oauth2-proxy --dry-run=client -o yaml | kubectl apply -f -
-    kubectl create secret generic oauth2-proxy \
-        --from-literal=client-id="$GOOGLE_CLIENT_ID" \
-        --from-literal=client-secret="$GOOGLE_CLIENT_SECRET" \
-        --from-literal=cookie-secret="$COOKIE_SECRET" \
-        -n oauth2-proxy \
-        --dry-run=client -o yaml | kubectl apply -f -
+# Install ArgoCD
+echo -e "${YELLOW}Installing ArgoCD...${NC}"
+kubectl create namespace argocd --dry-run=client -o yaml | kubectl apply -f -
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
-    echo -e "${GREEN}✓ OAuth2 Proxy secret created${NC}"
-}
+# Wait for ArgoCD
+echo -e "${YELLOW}Waiting for ArgoCD to be ready...${NC}"
+kubectl wait --for=condition=available --timeout=300s deployment/argocd-server -n argocd
 
-# Apply ArgoCD configuration
-setup_argocd_config() {
-    echo ""
-    echo "=== Applying ArgoCD Configuration ==="
+# Install cert-manager
+echo -e "${YELLOW}Installing cert-manager...${NC}"
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.13.0/cert-manager.yaml
+kubectl wait --for=condition=available --timeout=300s deployment/cert-manager -n cert-manager
 
-    kubectl apply -f config/argocd-cm-patch.yaml
-    kubectl apply -f config/argocd-ingress.yaml
+# Create namespaces
+echo -e "${YELLOW}Creating namespaces...${NC}"
+for ns in infrastructure dev-core prod-core monitoring authentik; do
+    kubectl create namespace $ns --dry-run=client -o yaml | kubectl apply -f -
+done
 
-    echo -e "${GREEN}✓ ArgoCD configuration applied${NC}"
-}
+# Deploy Authentik with stable password
+echo -e "${YELLOW}Deploying Authentik SSO...${NC}"
+AUTHENTIK_PASSWORD=$(openssl rand -base64 32)
+kubectl create secret generic authentik-postgresql \
+    --from-literal=password="$AUTHENTIK_PASSWORD" \
+    -n authentik --dry-run=client -o yaml | kubectl apply -f -
 
-# Apply authorized users configuration
-setup_authorized_users() {
-    echo ""
-    echo "=== Setting up Authorized Users ==="
+# Store password in PostgreSQL
+cat << EOF | kubectl apply -f -
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: setup-config
+  namespace: default
+data:
+  authentik_db_password: "$AUTHENTIK_PASSWORD"
+  google_client_id: "$GOOGLE_CLIENT_ID"
+  google_client_secret: "$GOOGLE_CLIENT_SECRET"
+  admin_email: "$ADMIN_EMAIL"
+EOF
 
-    kubectl apply -f config/authorized-users.yaml
+# Deploy infrastructure applications via ArgoCD
+echo -e "${YELLOW}Deploying infrastructure via ArgoCD...${NC}"
+kubectl apply -f argocd-apps/
 
-    echo -e "${GREEN}✓ Authorized users configured${NC}"
-}
+# Wait for PostgreSQL to be ready
+echo -e "${YELLOW}Waiting for PostgreSQL...${NC}"
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n infrastructure --timeout=300s || true
 
-# Deploy ArgoCD Applications
-deploy_argocd_apps() {
-    echo ""
-    echo "=== Deploying ArgoCD Applications ==="
+# Configure PostgreSQL for Authentik
+echo -e "${YELLOW}Configuring PostgreSQL...${NC}"
+kubectl exec -n infrastructure postgresql-0 -- psql -U postgres << EOF
+CREATE USER authentik_user WITH PASSWORD '$AUTHENTIK_PASSWORD';
+CREATE DATABASE authentik OWNER authentik_user;
+GRANT ALL PRIVILEGES ON DATABASE authentik TO authentik_user;
+EOF
 
-    kubectl apply -f argocd-apps/
+# Deploy Authentik
+echo -e "${YELLOW}Deploying Authentik...${NC}"
+helm repo add authentik https://charts.goauthentik.io
+helm repo update
+helm install authentik authentik/authentik \
+    --namespace authentik \
+    --set authentik.secret_key="$(openssl rand -base64 32)" \
+    --set authentik.error_reporting.enabled=false \
+    --set postgresql.enabled=false \
+    --set redis.enabled=false \
+    --set authentik.postgresql.host=postgresql.infrastructure.svc.cluster.local \
+    --set authentik.postgresql.name=authentik \
+    --set authentik.postgresql.user=authentik_user \
+    --set authentik.postgresql.password="$AUTHENTIK_PASSWORD" \
+    --set authentik.redis.host=redis-master.infrastructure.svc.cluster.local \
+    --set server.ingress.enabled=true \
+    --set server.ingress.hosts[0]=auth.$DOMAIN \
+    --set server.ingress.tls[0].secretName=authentik-tls \
+    --set server.ingress.tls[0].hosts[0]=auth.$DOMAIN
 
-    echo -e "${GREEN}✓ ArgoCD applications deployed${NC}"
-    echo "ArgoCD will now sync all applications automatically"
-}
+# Wait for Authentik
+echo -e "${YELLOW}Waiting for Authentik to be ready...${NC}"
+kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=authentik -n authentik --timeout=300s
 
-# Wait for services to be ready
-wait_for_services() {
-    echo ""
-    echo "=== Waiting for services to be ready ==="
+# Configure Google OAuth in Authentik
+echo -e "${YELLOW}Configuring Google OAuth...${NC}"
+kubectl exec -n authentik deployment/authentik-server -- python << EOF
+import os, django
+os.environ['DJANGO_SETTINGS_MODULE'] = 'authentik.root.settings'
+django.setup()
+from authentik.sources.oauth.models import OAuthSource
+from authentik.policies.expression.models import ExpressionPolicy
 
-    echo "Waiting for infrastructure pods..."
-    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=postgresql -n infrastructure --timeout=300s || true
-    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=redis -n infrastructure --timeout=300s || true
-    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=kafka -n infrastructure --timeout=300s || true
+# Create Google OAuth source
+OAuthSource.objects.update_or_create(
+    slug='google',
+    defaults={
+        'name': 'Google',
+        'provider_type': 'google',
+        'consumer_key': '$GOOGLE_CLIENT_ID',
+        'consumer_secret': '$GOOGLE_CLIENT_SECRET',
+        'enabled': True,
+        'user_matching_mode': 'email_deny'
+    }
+)
 
-    echo "Waiting for application pods..."
-    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=core-pipeline -n dev-core --timeout=300s || true
-    kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=core-pipeline -n prod-core --timeout=300s || true
+# Create access restriction policy
+ExpressionPolicy.objects.update_or_create(
+    name='Only Admin',
+    defaults={
+        'expression': 'return request.user.email == "$ADMIN_EMAIL"'
+    }
+)
+print('OAuth configured successfully')
+EOF
 
-    echo -e "${GREEN}✓ Services are ready${NC}"
-}
+# Get ArgoCD admin password
+echo -e "${YELLOW}Getting ArgoCD admin password...${NC}"
+ARGO_PASS=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
 
-# Print access information
-print_access_info() {
-    echo ""
-    echo "=== ================================================= ==="
-    echo "=== Infrastructure Setup Complete! ==="
-    echo "=== ================================================= ==="
-    echo ""
-    echo "Services are available at:"
-    echo ""
-    echo "  ArgoCD:            https://argo.theedgestory.org"
-    echo "  Kafka UI:          https://kafka.theedgestory.org"
-    echo "  Grafana:           https://grafana.theedgestory.org"
-    echo "  MinIO (S3):        https://s3-admin.theedgestory.org"
-    echo "  Gatus (Status):    https://status.theedgestory.org"
-    echo "  OAuth2 Proxy:      https://auth.theedgestory.org/oauth2/sign_in"
-    echo ""
-    echo "  Dev App:           https://core-pipeline.dev.theedgestory.org/api-docs"
-    echo "  Prod App:          https://core-pipeline.theedgestory.org/api-docs"
-    echo ""
-    echo "Get ArgoCD admin password:"
-    echo "  kubectl get secret -n argocd argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
-    echo ""
-    echo "Check deployment status:"
-    echo "  ./scripts/healthcheck.sh"
-    echo ""
-}
-
-# Main execution
-main() {
-    check_prerequisites
-    setup_cloudflare_tls
-    setup_oauth2
-    setup_authorized_users
-    setup_argocd_config
-    deploy_argocd_apps
-    wait_for_services
-    print_access_info
-}
-
-main
+# Summary
+echo ""
+echo -e "${GREEN}=== Setup Complete ===${NC}"
+echo ""
+echo -e "${GREEN}Service URLs:${NC}"
+echo "  ArgoCD: https://argo.$DOMAIN"
+echo "    Username: admin"
+echo "    Password: $ARGO_PASS"
+echo ""
+echo "  Authentik: https://auth.$DOMAIN"
+echo "    Username: akadmin"
+echo "    Password: (check kubectl logs)"
+echo ""
+echo "  Core Pipeline Prod: https://core-pipeline.$DOMAIN"
+echo "  Core Pipeline Dev: https://core-pipeline.dev.$DOMAIN"
+echo "  Grafana: https://grafana.dev.$DOMAIN"
+echo "  Status Page: https://status.$DOMAIN"
+echo ""
+echo -e "${YELLOW}Next Steps:${NC}"
+echo "1. Add this redirect URI to Google Cloud Console:"
+echo "   https://auth.$DOMAIN/source/oauth/callback/google/"
+echo ""
+echo "2. Configure applications to use Authentik OAuth"
+echo "3. Run ./scripts/healthcheck.sh to verify all services"
+echo ""

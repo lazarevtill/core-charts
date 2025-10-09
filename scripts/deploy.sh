@@ -1,82 +1,36 @@
 #!/bin/bash
-# Deployment Script
-# Updates existing infrastructure and applications via ArgoCD
+# Deploy Script - Applies changes from core-charts repository via ArgoCD
 
 set -e
 
-# Colors for output
-RED='\033[0;31m'
+# Colors
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-APP_NAME=${1:-"all"}
+echo -e "${GREEN}=== Deploying Core Charts Updates ===${NC}"
 
-echo "=== Deploying via ArgoCD ==="
-echo ""
+# Sync with git
+echo -e "${YELLOW}Pulling latest changes...${NC}"
+git pull origin main
 
-# Check if ArgoCD is available
-if ! kubectl get namespace argocd >/dev/null 2>&1; then
-    echo -e "${RED}ArgoCD namespace not found. Please run ./scripts/setup.sh first${NC}"
-    exit 1
-fi
+# Apply ArgoCD applications
+echo -e "${YELLOW}Updating ArgoCD applications...${NC}"
+kubectl apply -f argocd-apps/
 
-# Sync ArgoCD applications
-sync_app() {
-    local app=$1
-    echo "Syncing $app..."
-
-    kubectl patch application $app -n argocd \
-        --type merge \
-        -p '{"operation":{"sync":{"revision":"HEAD"}}}' \
-        >/dev/null 2>&1
-
-    echo -e "${GREEN}✓ $app sync triggered${NC}"
-}
+# Trigger sync for all applications
+echo -e "${YELLOW}Syncing applications...${NC}"
+for app in $(kubectl get applications -n argocd -o jsonpath='{.items[*].metadata.name}'); do
+    echo "  Syncing: $app"
+    kubectl patch application $app -n argocd --type merge -p '{"operation":{"sync":{"revision":"HEAD"}}}' || true
+done
 
 # Wait for sync
-wait_for_sync() {
-    local app=$1
-    echo "Waiting for $app to sync..."
+echo -e "${YELLOW}Waiting for sync to complete...${NC}"
+sleep 10
 
-    timeout 120s bash -c "until kubectl get application $app -n argocd -o jsonpath='{.status.sync.status}' | grep -q 'Synced'; do sleep 2; done" \
-        && echo -e "${GREEN}✓ $app synced${NC}" \
-        || echo -e "${YELLOW}⚠ $app sync timeout (check ArgoCD UI)${NC}"
-}
+# Check status
+echo -e "${GREEN}Application Status:${NC}"
+kubectl get applications -n argocd
 
-# Deploy specific app or all
-if [ "$APP_NAME" == "all" ]; then
-    echo "Deploying all applications..."
-    echo ""
-
-    # Infrastructure first (sync-wave 0-1)
-    sync_app "infrastructure"
-    wait_for_sync "infrastructure"
-
-    # OAuth2 Proxy
-    sync_app "oauth2-proxy"
-    wait_for_sync "oauth2-proxy"
-
-    # Applications (sync-wave 2)
-    sync_app "core-pipeline-dev"
-    sync_app "core-pipeline-prod"
-
-    echo ""
-    echo -e "${GREEN}All applications deployed${NC}"
-
-elif kubectl get application $APP_NAME -n argocd >/dev/null 2>&1; then
-    sync_app "$APP_NAME"
-    wait_for_sync "$APP_NAME"
-
-else
-    echo -e "${RED}Application $APP_NAME not found${NC}"
-    echo ""
-    echo "Available applications:"
-    kubectl get applications -n argocd -o name | sed 's|application.argoproj.io/||'
-    exit 1
-fi
-
-echo ""
-echo "Check status: kubectl get applications -n argocd"
-echo "View logs: kubectl logs -n <namespace> <pod-name>"
-echo "ArgoCD UI: https://argo.theedgestory.org"
+echo -e "${GREEN}Deploy complete!${NC}"

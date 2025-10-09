@@ -1,108 +1,128 @@
 #!/bin/bash
-# Health Check Script
-# Checks the status of all infrastructure services
+# Health Check Script - Verifies all services are running correctly
 
-# Colors for output
+set -e
+
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-echo "=== Infrastructure Health Check ==="
+echo -e "${GREEN}=== System Health Check ===${NC}"
 echo ""
 
-# Check cluster connectivity
-echo -e "${BLUE}Cluster Connectivity:${NC}"
+# Function to check URL
+check_url() {
+    local url=$1
+    local name=$2
+    if curl -s -o /dev/null -w "%{http_code}" "$url" | grep -q "200\|302\|401\|403"; then
+        echo -e "  ✅ $name: ${GREEN}ONLINE${NC} - $url"
+    else
+        echo -e "  ❌ $name: ${RED}OFFLINE${NC} - $url"
+    fi
+}
+
+# Check Kubernetes cluster
+echo -e "${YELLOW}Kubernetes Cluster:${NC}"
 if kubectl cluster-info >/dev/null 2>&1; then
-    echo -e "${GREEN}✓ Connected to Kubernetes cluster${NC}"
+    echo -e "  ✅ Cluster: ${GREEN}CONNECTED${NC}"
 else
-    echo -e "${RED}✗ Cannot connect to cluster${NC}"
+    echo -e "  ❌ Cluster: ${RED}DISCONNECTED${NC}"
     exit 1
 fi
+
+# Check namespaces
 echo ""
-
-# Check ArgoCD applications
-echo -e "${BLUE}ArgoCD Applications:${NC}"
-kubectl get applications -n argocd -o custom-columns="NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status" 2>/dev/null || {
-    echo -e "${RED}✗ Cannot fetch ArgoCD applications${NC}"
-}
-echo ""
-
-# Check pods by namespace
-check_namespace_pods() {
-    local ns=$1
-    local name=$2
-
-    echo -e "${BLUE}$name Pods:${NC}"
-
+echo -e "${YELLOW}Namespaces:${NC}"
+for ns in argocd infrastructure dev-core prod-core monitoring authentik; do
     if kubectl get namespace $ns >/dev/null 2>&1; then
-        local total=$(kubectl get pods -n $ns --no-headers 2>/dev/null | wc -l | tr -d ' ')
-        local ready=$(kubectl get pods -n $ns --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l | tr -d ' ')
-
-        if [ "$total" -eq 0 ]; then
-            echo -e "${YELLOW}⚠ No pods found in $ns${NC}"
-        elif [ "$ready" -eq "$total" ]; then
-            echo -e "${GREEN}✓ All $total pods running${NC}"
-        else
-            echo -e "${YELLOW}⚠ $ready/$total pods running${NC}"
-            kubectl get pods -n $ns --field-selector=status.phase!=Running --no-headers 2>/dev/null
-        fi
+        echo -e "  ✅ $ns: ${GREEN}EXISTS${NC}"
     else
-        echo -e "${RED}✗ Namespace $ns not found${NC}"
-    fi
-    echo ""
-}
-
-# Check infrastructure
-check_namespace_pods "infrastructure" "Infrastructure"
-
-# Check applications
-check_namespace_pods "dev-core" "Dev Application"
-check_namespace_pods "prod-core" "Prod Application"
-
-# Check platform services
-check_namespace_pods "argocd" "ArgoCD"
-check_namespace_pods "oauth2-proxy" "OAuth2 Proxy"
-check_namespace_pods "monitoring" "Monitoring"
-check_namespace_pods "minio" "MinIO"
-check_namespace_pods "status" "Status (Gatus)"
-
-# Check ingresses
-echo -e "${BLUE}Ingresses:${NC}"
-kubectl get ingress -A -o custom-columns="NAMESPACE:.metadata.namespace,NAME:.metadata.name,HOST:.spec.rules[0].host,PORTS:.status.loadBalancer.ingress[0].ip" 2>/dev/null || {
-    echo -e "${RED}✗ Cannot fetch ingresses${NC}"
-}
-echo ""
-
-# Check TLS secrets
-echo -e "${BLUE}TLS Secrets:${NC}"
-for ns in argocd dev-core prod-core infrastructure monitoring oauth2-proxy status minio; do
-    if kubectl get secret cloudflare-origin-tls -n $ns >/dev/null 2>&1; then
-        echo -e "${GREEN}✓ cloudflare-origin-tls present in $ns${NC}"
-    else
-        echo -e "${RED}✗ cloudflare-origin-tls missing in $ns${NC}"
+        echo -e "  ❌ $ns: ${RED}MISSING${NC}"
     fi
 done
-echo ""
 
-# Check service endpoints
-echo -e "${BLUE}Service Endpoints:${NC}"
-echo "  ArgoCD:         https://argo.theedgestory.org"
-echo "  Kafka UI:       https://kafka.theedgestory.org"
-echo "  Grafana:        https://grafana.theedgestory.org"
-echo "  MinIO:          https://s3-admin.theedgestory.org"
-echo "  Status:         https://status.theedgestory.org"
-echo "  Dev App:        https://core-pipeline.dev.theedgestory.org/api-docs"
-echo "  Prod App:       https://core-pipeline.theedgestory.org/api-docs"
+# Check ArgoCD applications
 echo ""
+echo -e "${YELLOW}ArgoCD Applications:${NC}"
+kubectl get applications -n argocd --no-headers | while read app rest; do
+    status=$(kubectl get application $app -n argocd -o jsonpath='{.status.health.status}')
+    sync=$(kubectl get application $app -n argocd -o jsonpath='{.status.sync.status}')
+    if [ "$status" = "Healthy" ] && [ "$sync" = "Synced" ]; then
+        echo -e "  ✅ $app: ${GREEN}Healthy/Synced${NC}"
+    else
+        echo -e "  ⚠️  $app: ${YELLOW}$status/$sync${NC}"
+    fi
+done
 
-# Summary
-echo -e "${BLUE}=== Health Check Complete ===${NC}"
+# Check pods
 echo ""
-echo "For detailed pod logs:"
-echo "  kubectl logs -n <namespace> <pod-name>"
+echo -e "${YELLOW}Pod Status:${NC}"
+for ns in infrastructure dev-core prod-core monitoring authentik; do
+    total=$(kubectl get pods -n $ns --no-headers 2>/dev/null | wc -l)
+    ready=$(kubectl get pods -n $ns --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l)
+    if [ "$total" -eq "$ready" ] && [ "$total" -gt 0 ]; then
+        echo -e "  ✅ $ns: ${GREEN}$ready/$total running${NC}"
+    elif [ "$total" -eq 0 ]; then
+        echo -e "  ⚠️  $ns: ${YELLOW}No pods${NC}"
+    else
+        echo -e "  ❌ $ns: ${RED}$ready/$total running${NC}"
+    fi
+done
+
+# Check services
 echo ""
-echo "For ArgoCD sync status:"
-echo "  kubectl describe application <app-name> -n argocd"
+echo -e "${YELLOW}Service Endpoints:${NC}"
+check_url "https://auth.theedgestory.org" "Authentik SSO"
+check_url "https://argo.theedgestory.org" "ArgoCD"
+check_url "https://core-pipeline.theedgestory.org/api-docs" "Core Pipeline Prod"
+check_url "https://core-pipeline.dev.theedgestory.org/api-docs" "Core Pipeline Dev"
+check_url "https://grafana.dev.theedgestory.org" "Grafana"
+check_url "https://kafka.theedgestory.org" "Kafka UI"
+check_url "https://s3-admin.theedgestory.org" "MinIO Console"
+check_url "https://status.theedgestory.org" "Status Page"
+
+# Check infrastructure services
 echo ""
+echo -e "${YELLOW}Infrastructure Services:${NC}"
+# PostgreSQL
+if kubectl exec -n infrastructure postgresql-0 -- pg_isready >/dev/null 2>&1; then
+    echo -e "  ✅ PostgreSQL: ${GREEN}READY${NC}"
+else
+    echo -e "  ❌ PostgreSQL: ${RED}NOT READY${NC}"
+fi
+
+# Redis
+if kubectl exec -n infrastructure redis-master-0 -- redis-cli ping >/dev/null 2>&1; then
+    echo -e "  ✅ Redis: ${GREEN}READY${NC}"
+else
+    echo -e "  ❌ Redis: ${RED}NOT READY${NC}"
+fi
+
+# Kafka
+if kubectl get kafka -n infrastructure >/dev/null 2>&1; then
+    echo -e "  ✅ Kafka: ${GREEN}READY${NC}"
+else
+    echo -e "  ❌ Kafka: ${RED}NOT READY${NC}"
+fi
+
+# Check authentication
+echo ""
+echo -e "${YELLOW}Authentication:${NC}"
+# Check if Google OAuth is configured
+if kubectl exec -n infrastructure postgresql-0 -- psql -U postgres -d authentik -c "SELECT 1 FROM authentik_sources_oauth_oauthsource WHERE provider_type='google'" 2>/dev/null | grep -q "1 row"; then
+    echo -e "  ✅ Google OAuth: ${GREEN}CONFIGURED${NC}"
+else
+    echo -e "  ⚠️  Google OAuth: ${YELLOW}NOT CONFIGURED${NC}"
+fi
+
+# Check if access policy exists
+if kubectl exec -n infrastructure postgresql-0 -- psql -U postgres -d authentik -c "SELECT 1 FROM authentik_policies_policy WHERE name LIKE '%dcversus%' OR name LIKE '%Admin%'" 2>/dev/null | grep -q "1 row"; then
+    echo -e "  ✅ Access Policy: ${GREEN}CONFIGURED${NC}"
+else
+    echo -e "  ⚠️  Access Policy: ${YELLOW}NOT CONFIGURED${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}=== Health Check Complete ===${NC}"
