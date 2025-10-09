@@ -21,7 +21,7 @@ authentik:
         value: "https://auth.theedgestory.org"
       # External PostgreSQL connection
       - name: AUTHENTIK_POSTGRESQL__HOST
-        value: "postgresql-0.postgresql.infrastructure.svc.cluster.local"
+        value: "10.42.0.86"
       - name: AUTHENTIK_POSTGRESQL__PORT
         value: "5432"
       - name: AUTHENTIK_POSTGRESQL__NAME

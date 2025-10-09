@@ -48,7 +48,7 @@ spec:
             echo "Authentik database initialized successfully"
         env:
           - name: POSTGRES_HOST
-            value: "postgresql-0.postgresql.infrastructure.svc.cluster.local"
+            value: "10.42.0.86"
           - name: POSTGRES_USER
             value: "postgres"
           - name: POSTGRES_PASSWORD
