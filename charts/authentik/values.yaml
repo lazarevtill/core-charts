@@ -14,8 +14,9 @@ authentik:
       - name: AUTHENTIK_AVATARS
         value: "gravatar"
       # Cookie and domain settings for proper HTTPS handling
+      # Use dot prefix to allow all subdomains
       - name: AUTHENTIK_COOKIE_DOMAIN
-        value: "theedgestory.org"
+        value: ".theedgestory.org"
       # External URL configuration
       - name: AUTHENTIK_HOST
         value: "https://auth.theedgestory.org"
@@ -26,9 +27,18 @@ authentik:
         value: "true"
       - name: AUTHENTIK_USE_X_FORWARDED_PORT
         value: "true"
-      # CSRF trusted origins
+      # CSRF trusted origins - wildcard for all subdomains
       - name: AUTHENTIK_CSRF_TRUSTED_ORIGINS
-        value: "https://auth.theedgestory.org,http://authentik-server.authentik.svc.cluster.local"
+        value: "https://auth.theedgestory.org,https://*.theedgestory.org,http://authentik-server.authentik.svc.cluster.local"
+      # Additional CSRF and cookie settings for proper operation
+      - name: AUTHENTIK_CSRF_COOKIE_SECURE
+        value: "true"
+      - name: AUTHENTIK_CSRF_COOKIE_SAMESITE
+        value: "Lax"
+      - name: AUTHENTIK_SESSION_COOKIE_DOMAIN
+        value: ".theedgestory.org"
+      - name: DJANGO_ALLOWED_HOSTS
+        value: "*"
       # External PostgreSQL connection
       - name: AUTHENTIK_POSTGRESQL__HOST
         value: "10.42.0.86"
