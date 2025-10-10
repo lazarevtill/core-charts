@@ -78,7 +78,7 @@ check_url "https://auth.theedgestory.org" "Authentik SSO"
 check_url "https://argo.theedgestory.org" "ArgoCD"
 check_url "https://core-pipeline.theedgestory.org/api-docs" "Core Pipeline Prod"
 check_url "https://core-pipeline.dev.theedgestory.org/api-docs" "Core Pipeline Dev"
-check_url "https://grafana.dev.theedgestory.org" "Grafana"
+check_url "https://grafana.theedgestory.org" "Grafana"
 check_url "https://kafka.theedgestory.org" "Kafka UI"
 check_url "https://s3-admin.theedgestory.org" "MinIO Console"
 check_url "https://status.theedgestory.org" "Status Page"
@@ -94,7 +94,7 @@ else
 fi
 
 # Redis
-if kubectl exec -n infrastructure redis-master-0 -- redis-cli ping >/dev/null 2>&1; then
+if kubectl exec -n infrastructure redis-0 -- redis-cli -a $(kubectl get secret -n infrastructure redis -o jsonpath='{.data.redis-password}' | base64 -d) ping >/dev/null 2>&1; then
     echo -e "  ✅ Redis: ${GREEN}READY${NC}"
 else
     echo -e "  ❌ Redis: ${RED}NOT READY${NC}"

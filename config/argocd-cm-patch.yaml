@@ -4,22 +4,39 @@
 data:
   # External links (pinned to top navigation)
   ui.externalLinks: |
-    - title: "🏠 The Edge Story"
-      url: "https://theedgestory.org"
-    - title: "✅ Status Page"
-      url: "https://status.theedgestory.org"
+    - title: "🔐 Authentik SSO"
+      url: "https://auth.theedgestory.org"
     - title: "📊 Grafana"
-      url: "https://grafana.theedgestory.org"
-    - title: "📈 Prometheus"
-      url: "https://prometheus.theedgestory.org"
+      url: "https://grafana.dev.theedgestory.org"
     - title: "📨 Kafka UI"
       url: "https://kafka.theedgestory.org"
     - title: "💾 MinIO Console"
       url: "https://s3-admin.theedgestory.org"
+    - title: "✅ Status Page"
+      url: "https://status.theedgestory.org"
     - title: "🚀 Dev Pipeline"
       url: "https://core-pipeline.dev.theedgestory.org/api-docs"
     - title: "✨ Prod Pipeline"
       url: "https://core-pipeline.theedgestory.org/api-docs"
 
-  # Dex OAuth2 configuration - keep existing settings, just add external links
-  # Do not modify dex.config or other existing settings
+  # OIDC configuration for Authentik
+  url: "https://argo.theedgestory.org"
+  oidc.config: |
+    name: Authentik
+    issuer: https://auth.theedgestory.org/application/o/argocd/
+    clientId: argocd
+    clientSecret: $oidc.authentik.clientSecret
+    requestedScopes: ["openid", "profile", "email", "groups"]
+    requestedIDTokenClaims: {"groups": {"essential": true}}
+
+  # RBAC policy - only dcversus@gmail.com has admin access
+  policy.csv: |
+    p, dcversus@gmail.com, applications, *, */*, allow
+    p, dcversus@gmail.com, clusters, *, *, allow
+    p, dcversus@gmail.com, repositories, *, *, allow
+    p, dcversus@gmail.com, certificates, *, *, allow
+    p, dcversus@gmail.com, projects, *, *, allow
+    g, dcversus@gmail.com, role:admin
+
+  # Disable built-in admin user
+  admin.enabled: "false"

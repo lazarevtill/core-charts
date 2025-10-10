@@ -46,6 +46,7 @@ That's it! The script will:
 |--------|---------|-------|
 | `setup.sh` | Complete infrastructure setup | Run once on fresh server |
 | `deploy.sh` | Apply changes from git | `./scripts/deploy.sh` |
+| `deploy-unified-auth.sh` | Configure SSO for all services | `./scripts/deploy-unified-auth.sh` |
 | `healthcheck.sh` | Verify all services | `./scripts/healthcheck.sh` |
 | `configure-authentik-apps.sh` | Setup OAuth apps | After Authentik is running |
 
@@ -64,7 +65,7 @@ All services use **Authentik SSO** with Google OAuth:
 |---------|-----|---------------|
 | Authentik | https://auth.theedgestory.org | Admin only |
 | ArgoCD | https://argo.theedgestory.org | ✅ |
-| Grafana | https://grafana.dev.theedgestory.org | ✅ |
+| Grafana | https://grafana.theedgestory.org | ✅ |
 | Kafka UI | https://kafka.theedgestory.org | ✅ |
 | MinIO | https://s3-admin.theedgestory.org | ✅ |
 | Status Page | https://status.theedgestory.org | Public |
