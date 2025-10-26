@@ -41,15 +41,11 @@ spec:
             secretKeyRef:
               name: dcmaidbot-secrets
               key: bot-token
-        - name: ADMIN_VASILISA_ID
+        - name: ADMIN_IDS
           valueFrom:
             secretKeyRef:
               name: dcmaidbot-secrets
-              key: admin-vasilisa-id
-        - name: ADMIN_DANIIL_ID
-          valueFrom:
-            secretKeyRef:
-              name: dcmaidbot-secrets
+              key: admin-ids
               key: admin-daniil-id
         - name: DATABASE_URL
           valueFrom:
