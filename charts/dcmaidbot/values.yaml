@@ -11,8 +11,8 @@ fullnameOverride: ""
 
 # Environment variables (all sourced from dcmaidbot-secrets in deployment):
 # - BOT_TOKEN: Telegram bot API token
-# - ADMIN_VASILISA_ID: Vasilisa's Telegram user ID
-# - ADMIN_DANIIL_ID: Daniil's Telegram user ID
+# - ADMIN_IDS: Comma-separated admin Telegram user IDs (supports unlimited admins)
+# - 
 # - DATABASE_URL: PostgreSQL connection string
 # - OPENAI_API_KEY: OpenAI API key for LLM/RAG
 
