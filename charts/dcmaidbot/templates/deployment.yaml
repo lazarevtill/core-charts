@@ -46,7 +46,6 @@ spec:
             secretKeyRef:
               name: dcmaidbot-secrets
               key: admin-ids
-              key: admin-daniil-id
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
