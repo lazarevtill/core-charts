@@ -41,18 +41,11 @@ spec:
             secretKeyRef:
               name: dcmaidbot-secrets
               key: bot-token
-        - name: DEBUG
+        - name: ADMIN_IDS
           valueFrom:
             secretKeyRef:
               name: dcmaidbot-secrets
-              key: debug
-              optional: true
-        - name: REDIS_URL
-          valueFrom:
-            secretKeyRef:
-              name: dcmaidbot-secrets
-              key: redis-url
-              optional: true
+              key: admin-ids
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
       {{- with .Values.nodeSelector }}
