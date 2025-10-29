@@ -83,8 +83,8 @@ spec:
         - name: NUDGE_SECRET
           valueFrom:
             secretKeyRef:
-              name: dcmaidbot-nudge-secret
-              key: NUDGE_SECRET
+              name: dcmaidbot-secrets
+              key: nudge-secret
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
       {{- with .Values.nodeSelector }}
