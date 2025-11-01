@@ -1,5 +1,5 @@
 # Secrets - NEVER COMMIT THESE!
-# environments/*/secrets/values.yaml
+environments/*/secrets/values.yaml
 environments/*/*.secrets.yaml
 *.secret.yaml
 *.secrets.yaml
