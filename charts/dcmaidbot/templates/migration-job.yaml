@@ -45,36 +45,36 @@ spec:
         - name: DATABASE_URL
           valueFrom:
             secretKeyRef:
-              name: dcmaidbot-secrets
+              name: {{ include "dcmaidbot.fullname" . }}-secrets
               key: database-url
         - name: DB_HOST
           valueFrom:
             secretKeyRef:
-              name: dcmaidbot-secrets
+              name: {{ include "dcmaidbot.fullname" . }}-secrets
               key: db-host
               optional: true
         - name: DB_PORT
           valueFrom:
             secretKeyRef:
-              name: dcmaidbot-secrets
+              name: {{ include "dcmaidbot.fullname" . }}-secrets
               key: db-port
               optional: true
         - name: DB_NAME
           valueFrom:
             secretKeyRef:
-              name: dcmaidbot-secrets
+              name: {{ include "dcmaidbot.fullname" . }}-secrets
               key: db-name
               optional: true
         - name: DB_USER
           valueFrom:
             secretKeyRef:
-              name: dcmaidbot-secrets
+              name: {{ include "dcmaidbot.fullname" . }}-secrets
               key: db-user
               optional: true
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: dcmaidbot-secrets
+              name: {{ include "dcmaidbot.fullname" . }}-secrets
               key: db-password
               optional: true
         resources:

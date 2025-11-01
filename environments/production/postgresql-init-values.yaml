@@ -5,6 +5,8 @@ postgresql:
   port: 5432
   adminUser: postgres
   adminPassword: ""  # Set from secret
+  secretName: "postgresql-admin"
+  secretKey: "password"
 
 databases:
   - name: core_dev

@@ -42,7 +42,7 @@ Instructions for Claude Code when working with this repository.
 ## Key Information
 
 ### Access
-- **Authentik**: http://auth.local.test
+- **Authentik**: [http://auth.local.test](http://auth.local.test)
 - **Admin User**: `akadmin`
 - **Access Method**: Recovery key (see ACCESS.md)
 
@@ -62,7 +62,7 @@ core-charts/
 ├── environments/
 │   ├── local/              # Local/MicroK8s configuration
 │   │   ├── values.yaml
-│   │   ├── authentik.values.yaml
+│   │   ├── authentik-values.yaml
 │   │   ├── postgresql-values.yaml
 │   │   ├── postgresql-init-values.yaml
 │   │   ├── redis-values.yaml
@@ -126,7 +126,7 @@ kubectl get ingress -A
 ### Update a Service
 ```bash
 # Edit values
-nano environments/local/authentik.values.yaml
+nano environments/local/authentik-values.yaml
 
 # Apply changes
 helmfile.exe -e local apply
@@ -134,7 +134,7 @@ helmfile.exe -e local apply
 # Or update specific service only
 helm upgrade authentik authentik/authentik \
   --namespace authentik \
-  --values environments/local/authentik.values.yaml
+  --values environments/local/authentik-values.yaml
 ```
 
 ### Access Authentik
@@ -154,7 +154,7 @@ kubectl exec -it -n authentik $(kubectl get pod -n authentik -l app.kubernetes.i
 - Store configuration in environment-specific values files
 - Use Kubernetes DNS for service discovery
 - Keep secrets in gitignored files or use external-secrets
-- Document everything in markdown
+- Document everything in Markdown
 
 ### ❌ DON'T
 - Write bash scripts for deployment

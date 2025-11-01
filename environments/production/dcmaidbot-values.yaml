@@ -1,7 +1,7 @@
 # DCMaidBot configuration for production environment
 
 image:
-  repository: ghcr.io/yourusername/dcmaidbot
+  repository: ghcr.io/uz0/dcmaidbot
   tag: ""  # Set via CI/CD
   pullPolicy: Always
 

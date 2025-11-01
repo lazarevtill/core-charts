@@ -4,7 +4,7 @@ auth:
   username: postgres
   password: ""  # Set via secrets or external-secrets
   database: postgres
-  existingSecret: "postgresql-admin"  # Create this secret separately
+  existingSecret: "postgresql-admin"  # Create this secret separately (see docs/postgresql-secret.md)
 
 primary:
   resources:

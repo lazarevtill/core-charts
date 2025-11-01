@@ -199,8 +199,8 @@ releases:
       - infrastructure/redis
       - ingress-nginx/ingress-nginx
     values:
-      - environments/{{ .Environment.Name }}/authentik.values.yaml
-      - environments/{{ .Environment.Name }}/secrets/authentik.values.yaml.gotmpl
+      - environments/{{ .Environment.Name }}/authentik-values.yaml
+      - environments/{{ .Environment.Name }}/secrets/authentik-values.yaml.gotmpl
     labels:
       layer: authentication
       component: sso

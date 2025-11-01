@@ -36,7 +36,7 @@ helm upgrade --install postgresql-init ./charts/postgresql-init \
 
 helm upgrade --install authentik authentik/authentik \
   --namespace authentik --create-namespace \
-  --values environments/local/authentik.values.yaml --wait
+  --values environments/local/authentik-values.yaml --wait
 ```
 
 Or use Helmfile:

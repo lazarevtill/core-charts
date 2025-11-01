@@ -20,7 +20,7 @@ core-charts/
 ├── environments/                # 🌍 Environment configs
 │   ├── local/                   # Local/MicroK8s
 │   │   ├── values.yaml          # Global settings
-│   │   ├── authentik.values.yaml
+│   │   ├── authentik-values.yaml
 │   │   ├── postgresql-values.yaml
 │   │   ├── postgresql-init-values.yaml
 │   │   ├── redis-values.yaml
@@ -78,7 +78,7 @@ core-charts/
 
 **Files per environment**:
 - `values.yaml` - Global settings (storage class, etc.)
-- `authentik.values.yaml` - Authentik SSO configuration
+- `authentik-values.yaml` - Authentik SSO configuration
 - `postgresql-values.yaml` - PostgreSQL settings
 - `postgresql-init-values.yaml` - Database initialization
 - `redis-values.yaml` - Redis cache settings
@@ -152,7 +152,7 @@ core-charts/
 ### Environment Values
 - `<service>.values.yaml` - Service-specific config
 - Pattern: Service name + `.values.yaml`
-- Example: `authentik.values.yaml`, `redis-values.yaml`
+- Example: `authentik-values.yaml`, `redis-values.yaml`
 
 ### Documentation
 - `README.md` - Main docs

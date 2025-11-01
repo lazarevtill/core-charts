@@ -8,22 +8,17 @@ image:
 replicaCount: 1
 
 env:
-  - name: NODE_ENV
-    value: "development"
-  - name: DATABASE_URL
-    valueFrom:
-      secretKeyRef:
-        name: core-pipeline-dev-db
-        key: url
-  - name: REDIS_URL
-    valueFrom:
-      secretKeyRef:
-        name: core-pipeline-dev-redis
-        key: url
-  - name: KAFKA_BROKERS
-    value: "kafka-cluster-kafka-bootstrap.infrastructure.svc.cluster.local:9092"
-  - name: LOG_LEVEL
-    value: "debug"
+  NODE_ENV: "development"
+  KAFKA_BROKERS: "kafka-cluster-kafka-bootstrap.infrastructure.svc.cluster.local:9092"
+  LOG_LEVEL: "debug"
+
+externalSecrets:
+  - envName: DATABASE_URL
+    secretName: core-pipeline-dev-db
+    secretKey: url
+  - envName: REDIS_URL
+    secretName: core-pipeline-dev-redis
+    secretKey: url
 
 ingress:
   enabled: true

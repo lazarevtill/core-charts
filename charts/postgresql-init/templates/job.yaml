@@ -33,7 +33,10 @@ spec:
           - name: PGUSER
             value: {{ .Values.postgresql.adminUser | quote }}
           - name: PGPASSWORD
-            value: {{ .Values.postgresql.adminPassword | quote }}
+            valueFrom:
+              secretKeyRef:
+                name: {{ required "postgresql.secretName is required" .Values.postgresql.secretName }}
+                key: {{ required "postgresql.secretKey is required" .Values.postgresql.secretKey }}
         resources:
           {{- toYaml .Values.job.resources | nindent 10 }}
         volumeMounts:

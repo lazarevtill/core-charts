@@ -1,8 +1,8 @@
 # Core Pipeline - Production environment overrides
 
 image:
-  repository: ghcr.io/yourusername/core-pipeline
-  tag: ""  # Set via CI/CD or manually
+  repository: ghcr.io/uz0/core-pipeline
+  tag: "main-bc7ada7"
   pullPolicy: Always
 
 replicaCount: 2  # High availability

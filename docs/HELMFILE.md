@@ -267,7 +267,7 @@ storageClass: "microk8s-hostpath"
 **Service-specific values:**
 - `environments/local/postgresql-values.yaml`
 - `environments/local/redis-values.yaml`
-- `environments/local/authentik.values.yaml`
+- `environments/local/authentik-values.yaml`
 - etc.
 
 ### Production Environment
@@ -288,6 +288,8 @@ certManager:
   enabled: true
   issuer: letsencrypt-prod
 ```
+
+> **Note:** Create the PostgreSQL admin secret ahead of time as described in [docs/postgresql-secret.md](docs/postgresql-secret.md).
 
 ### Switching Environments
 
@@ -323,7 +325,7 @@ helmfile.exe -e local sync
 
 ```bash
 # Edit the values file
-nano environments/local/authentik.values.yaml
+nano environments/local/authentik-values.yaml
 
 # Apply changes
 helmfile.exe -e local -l name=authentik apply
@@ -575,11 +577,11 @@ environments/
 ├── local/
 │   ├── values.yaml              # Global toggles
 │   ├── postgresql-values.yaml   # Service-specific
-│   └── authentik.values.yaml
+│   └── authentik-values.yaml
 └── production/
     ├── values.yaml
     ├── postgresql-values.yaml
-    └── authentik.values.yaml
+    └── authentik-values.yaml
 ```
 
 ### 6. Use .gitignore for Secrets

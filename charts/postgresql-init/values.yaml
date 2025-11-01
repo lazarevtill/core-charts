@@ -5,7 +5,9 @@ postgresql:
   host: postgresql.infrastructure.svc.cluster.local
   port: 5432
   adminUser: postgres
-  adminPassword: ""  # Must be provided
+  adminPassword: ""  # Deprecated - use secretName/secretKey
+  secretName: ""
+  secretKey: ""
 
 # Databases to create
 # Each database gets:
